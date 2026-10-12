@@ -16,12 +16,16 @@ import re
 import statistics
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-BASE = os.environ.get("NCC_BASE_URL", "").strip().rstrip("/") or "https://nextiva.thrio.io"
+BASE = os.environ.get("NCC_BASE_URL", "").strip().rstrip("/") or "https://mancity.thrio.io"
 TOKEN = os.environ.get("NCC_TOKEN", "").strip()
 DAYS = int(os.environ.get("WINDOW_DAYS", "30") or 30)
+WORKERS = int(os.environ.get("WORKERS", "6") or 6)
+MAX_MINUTES = float(os.environ.get("MAX_MINUTES", "20") or 20)  # stop fetching after this long and save what we have
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 TZ = datetime.timezone(datetime.timedelta(hours=-7))  # Arizona, no daylight saving
 UA = "Mozilla/5.0 (compatible; ncc-dashboard)"  # the WAF blocks the default Python user agent
@@ -49,7 +53,7 @@ def api(path, params=None):
     req = urllib.request.Request(url, headers={"authorization": TOKEN, "accept": "application/json", "user-agent": UA})
     for attempt in range(3):
         try:
-            with urllib.request.urlopen(req, timeout=60) as r:
+            with urllib.request.urlopen(req, timeout=45) as r:
                 return json.loads(r.read().decode("utf-8"))
         except urllib.error.HTTPError as e:
             if e.code in (429, 502, 503, 504) and attempt < 2:
@@ -59,11 +63,34 @@ def api(path, params=None):
     raise RuntimeError("unreachable")
 
 
+HISTORY_PATHS = [
+    os.environ.get("NCC_HISTORY_PATH", "").strip(),
+    "/analytics/api/types/workitems/history",
+    "/analytics/api/v1/types/workitems/history",
+    "/analytics/api/v1/types/workitem/history",
+    "/analytics/api/types/workitem/history",
+]
+_working = []
+
+
 def history(wtype, a, b):
-    j = api("/analytics/api/v1/types/workitems/history", {
-        "rows": 500, "start": 0, "q": "", "workitemType": wtype,
-        "rangeType": "dateRange", "rangeFrom": a, "rangeTo": b})
-    return j.get("objects") or []
+    params = {"rows": 500, "start": 0, "q": "", "workitemType": wtype,
+              "rangeType": "dateRange", "rangeFrom": a, "rangeTo": b}
+    paths = _working or [p for p in HISTORY_PATHS if p]
+    last = None
+    for path in paths:
+        try:
+            j = api(path, params)
+        except RuntimeError as exc:
+            last = exc
+            if "HTTP 404" in str(exc):
+                continue  # wrong address, try the next one
+            raise
+        if not _working:
+            _working.append(path)
+            print("History endpoint found:", path)
+        return j.get("objects") or []
+    raise RuntimeError(f"no history endpoint answered ({last}). Run the explorer to find the right path")
 
 
 def window(wtype, a, b, depth=0):
@@ -255,40 +282,85 @@ def build(items):
 
 
 def users():
-    rows, start = [], 0
-    while start < 2000:
+    rows, start, total = [], 0, None
+    while start < 5000:
         j = api("/data/api/types/user", {"rows": 50, "start": start, "q": ""})
         objs = j.get("objects") or []
+        total = j.get("total", total)
         for u in objs:
-            nm = u.get("name") or (str(u.get("firstName", "")) + " " + str(u.get("lastName", ""))).strip() or u.get("username") or u.get("email") or ""
-            login = str(u.get("username") or u.get("email") or "").split("@")[0]
-            rows.append({"name": nm, "login": login, "active": u.get("active", u.get("status")) not in (False, "inactive", "INACTIVE", 0)})
-        if len(objs) < 50:
-            break
+            nm = u.get("name") or (str(u.get("firstName", "")) + " " + str(u.get("lastName", ""))).strip() or str(u.get("username") or "")
+            login = str(u.get("username") or "").split("@")[0]
+            rows.append({"name": nm, "login": login, "active": bool(u.get("enabled", True)) and not u.get("deletedAt")})
         start += 50
+        if len(objs) < 50 or (total is not None and start >= total):
+            break
     return rows
 
 
+def say(*a):
+    print(*a, flush=True)
+
+
 def main():
+    try:
+        sys.stdout.reconfigure(line_buffering=True)
+    except Exception:
+        pass
     if not TOKEN:
-        print("ERROR: NCC_TOKEN is empty. Add it under Settings > Secrets and variables > Actions.")
+        say("ERROR: NCC_TOKEN is empty. Add it under Settings > Secrets and variables > Actions.")
         sys.exit(1)
-    errors, items = [], []
+    say(f"Base URL: {BASE} | days: {DAYS} | workers: {WORKERS} | time limit: {MAX_MINUTES} min")
     now = datetime.datetime.now(TZ)
     midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    for d in range(DAYS):
+    # 1. find the working history address with one small call (shows the speed of a single call)
+    t0 = time.time()
+    try:
+        a0 = int(midnight.timestamp() * 1000)
+        history("InboundCall", a0, a0 + 86400000 - 1)
+    except Exception as exc:
+        say("ERROR:", exc)
+        sys.exit(1)
+    say(f"One history call took {time.time() - t0:.1f}s")
+    deadline = time.time() + MAX_MINUTES * 60
+    tasks = []
+    for d in range(DAYS):  # newest days first, so a time-limited run still has the recent days
         a = int((midnight - datetime.timedelta(days=d)).timestamp() * 1000)
-        b = a + 86400000 - 1
         for t in TYPES:
-            try:
-                for w in window(t, a, b):
-                    items.append(norm(w, t))
-            except Exception as exc:
-                errors.append(f"{t} day -{d}: {exc}")
-                if "HTTP 401" in str(exc) or "HTTP 403" in str(exc):
-                    print("ERROR:", exc, "(the token may be wrong, expired, or lacks permission)")
-                    sys.exit(1)
-            time.sleep(0.05)
+            tasks.append((d, t, a, a + 86400000 - 1))
+    errors, items, done, skipped = [], [], 0, 0
+
+    def work(task):
+        d, t, a, b = task
+        if time.time() > deadline:
+            return task, None, "skipped"
+        try:
+            return task, [norm(w, t) for w in window(t, a, b)], None
+        except Exception as exc:
+            return task, None, str(exc)
+
+    fatal = None
+    with ThreadPoolExecutor(max_workers=WORKERS) as pool:
+        futs = [pool.submit(work, t) for t in tasks]
+        for f in as_completed(futs):
+            (d, t, a, b), got, err = f.result()
+            done += 1
+            if got:
+                items.extend(got)
+            if err == "skipped":
+                skipped += 1
+            elif err:
+                errors.append(f"{t} day -{d}: {err}")
+                if "HTTP 401" in err or "HTTP 403" in err:
+                    fatal = err
+            if done % 25 == 0 or done == len(tasks):
+                say(f"  {done}/{len(tasks)} requests done, {len(items)} workitems so far, {len(errors)} errors, {skipped} skipped")
+            if fatal:
+                for g in futs:
+                    g.cancel()
+                break
+    if fatal:
+        say("ERROR:", fatal, "(the token may be wrong, expired, or lacks permission)")
+        sys.exit(1)
     seen, uniq = set(), []
     for x in items:  # the same workitem can come back twice at window edges
         if x["id"] and x["id"] in seen:
@@ -296,6 +368,9 @@ def main():
         seen.add(x["id"])
         uniq.append(x)
     out = build(uniq)
+    if skipped:
+        out["partial"] = True
+        errors.insert(0, f"Stopped after {MAX_MINUTES} minutes. {skipped} of {len(tasks)} requests were skipped (the oldest days).")
     try:
         out["users"] = users()
     except Exception as exc:
@@ -304,7 +379,7 @@ def main():
     if errors:
         out["errors"] = errors[:8]
     (ROOT / "docs" / "data.json").write_text(json.dumps(out, indent=2, default=str))
-    print("Wrote docs/data.json:", len(uniq), "workitems,", len(out["agents"]), "agents,", len(out["ai_evals"]), "AI evaluations,", len(out["users"]), "users,", len(errors), "errors")
+    say("Wrote docs/data.json:", len(uniq), "workitems,", len(out["agents"]), "agents,", len(out["ai_evals"]), "AI evaluations,", len(out["users"]), "users,", len(errors), "errors")
 
 
 if __name__ == "__main__":
