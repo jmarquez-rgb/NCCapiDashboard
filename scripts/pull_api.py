@@ -74,7 +74,8 @@ _working = []
 
 
 def history(wtype, a, b):
-    params = {"rows": 500, "start": 0, "q": "", "workitemType": wtype,
+    # The history endpoint ignores workitemType (it returns every type for the window), so we do not send it.
+    params = {"rows": 500, "start": 0, "q": "",
               "rangeType": "dateRange", "rangeFrom": a, "rangeTo": b}
     paths = _working or [p for p in HISTORY_PATHS if p]
     last = None
@@ -117,13 +118,23 @@ def norm(w, wtype):
     created = w.get("createdAt") or 0
     summ = w.get("summary") or None
     cid = w.get("campaignId") or ""
+    cname = w.get("campaignName")
+    craw = w.get("campaign")
+    if isinstance(craw, dict):
+        cname = cname or craw.get("name")
+        cid = cid or str(craw.get("_id") or craw.get("id") or "")
+    elif isinstance(craw, str):
+        if craw in CAMPAIGNS:
+            cid = cid or craw
+        else:
+            cname = cname or craw
     return {
-        "type": w.get("type") or wtype, "id": str(w.get("_id") or w.get("workitemId") or w.get("callId") or ""),
+        "type": w.get("type") or w.get("workitemType") or "Unknown", "id": str(w.get("_id") or w.get("workitemId") or w.get("callId") or ""),
         "created": created, "talk": talk, "hold": hold, "wrap": wrap,
         "abandoned": any(str(e.get("type", "")).startswith("abandon") for e in ev),
         "transferred": any("transfer" in str(e.get("type", "")) for e in ev),
         "disp": disp, "summary": summ, "agent": w.get("agentUsername"),
-        "campaign": w.get("campaignName") or CAMPAIGNS.get(cid) or (cid[:8] if cid else "Unknown"),
+        "campaign": cname or CAMPAIGNS.get(cid) or (cid[:8] if cid else "Unknown"),
     }
 
 
@@ -325,35 +336,42 @@ def main():
     tasks = []
     for d in range(DAYS):  # newest days first, so a time-limited run still has the recent days
         a = int((midnight - datetime.timedelta(days=d)).timestamp() * 1000)
-        for t in TYPES:
-            tasks.append((d, t, a, a + 86400000 - 1))
+        tasks.append((d, a, a + 86400000 - 1))
     errors, items, done, skipped = [], [], 0, 0
+    keys_seen, types_seen, raw_count = {}, {}, 0
 
     def work(task):
-        d, t, a, b = task
+        d, a, b = task
         if time.time() > deadline:
-            return task, None, "skipped"
+            return task, None, None, "skipped"
         try:
-            return task, [norm(w, t) for w in window(t, a, b)], None
+            raw = window("", a, b)
+            return task, [norm(w, "") for w in raw], raw, None
         except Exception as exc:
-            return task, None, str(exc)
+            return task, None, None, str(exc)
 
     fatal = None
     with ThreadPoolExecutor(max_workers=WORKERS) as pool:
         futs = [pool.submit(work, t) for t in tasks]
         for f in as_completed(futs):
-            (d, t, a, b), got, err = f.result()
+            (d, a, b), got, raw, err = f.result()
             done += 1
             if got:
                 items.extend(got)
+                for w in raw:
+                    raw_count += 1
+                    for k in w:
+                        keys_seen[k] = keys_seen.get(k, 0) + 1
+                    t = str(w.get("type"))
+                    types_seen[t] = types_seen.get(t, 0) + 1
             if err == "skipped":
                 skipped += 1
             elif err:
-                errors.append(f"{t} day -{d}: {err}")
+                errors.append(f"day -{d}: {err}")
                 if "HTTP 401" in err or "HTTP 403" in err:
                     fatal = err
-            if done % 25 == 0 or done == len(tasks):
-                say(f"  {done}/{len(tasks)} requests done, {len(items)} workitems so far, {len(errors)} errors, {skipped} skipped")
+            if done % 5 == 0 or done == len(tasks):
+                say(f"  {done}/{len(tasks)} days done, {len(items)} workitems so far, {len(errors)} errors, {skipped} skipped")
             if fatal:
                 for g in futs:
                     g.cancel()
@@ -361,6 +379,9 @@ def main():
     if fatal:
         say("ERROR:", fatal, "(the token may be wrong, expired, or lacks permission)")
         sys.exit(1)
+    say(f"\nFIELD REPORT (names and counts only) from {raw_count} workitems:")
+    say("  types:", dict(sorted(types_seen.items(), key=lambda kv: -kv[1])[:14]))
+    say("  fields:", ", ".join(f"{k}={v}" for k, v in sorted(keys_seen.items(), key=lambda kv: (-kv[1], kv[0]))[:70]))
     seen, uniq = set(), []
     for x in items:  # the same workitem can come back twice at window edges
         if x["id"] and x["id"] in seen:
@@ -370,7 +391,7 @@ def main():
     out = build(uniq)
     if skipped:
         out["partial"] = True
-        errors.insert(0, f"Stopped after {MAX_MINUTES} minutes. {skipped} of {len(tasks)} requests were skipped (the oldest days).")
+        errors.insert(0, f"Stopped after {MAX_MINUTES} minutes. {skipped} of {len(tasks)} days were skipped (the oldest days).")
     try:
         out["users"] = users()
     except Exception as exc:
