@@ -1,529 +1,1189 @@
 {
-  "updated_at": "2026-10-09T21:36:44+00:00",
+  "source": "api",
+  "updated_at": "2026-10-12T02:39:20+00:00",
   "window_days": 30,
-  "snapshot": true,
   "kpis": {
-    "workitems": 671,
-    "connected": 257,
-    "abandoned_calls": 62,
-    "transferred_calls": 136,
-    "talk_avg_sec": 170.0,
-    "hold_avg_sec": 1.5,
-    "acw_avg_sec_capped": 135.0,
-    "aht_mean_sec_capped": 278.2,
-    "aht_median_sec": 101.5,
-    "stuck_over_1h": 14
+    "workitems": 637,
+    "connected": 0,
+    "abandoned_calls": 0,
+    "transferred_calls": 0,
+    "talk_avg_sec": null,
+    "hold_avg_sec": null,
+    "acw_avg_sec_capped": null,
+    "aht_mean_sec_capped": null,
+    "aht_median_sec": null,
+    "stuck_over_1h": 0
   },
-  "coverage": [
-    {
-      "campaignName": "TEST ConnorW Bank DTMF",
-      "connected_calls": 61,
-      "with_summary": 15,
-      "short_isdc": 0,
-      "long_composite": 15
-    },
-    {
-      "campaignName": "Xbert Shop - DTMF",
-      "connected_calls": 58,
-      "with_summary": 39,
-      "short_isdc": 0,
-      "long_composite": 39
-    },
-    {
-      "campaignName": "Xbert Bank - DTMF",
-      "connected_calls": 30,
-      "with_summary": 24,
-      "short_isdc": 0,
-      "long_composite": 24
-    },
-    {
-      "campaignName": "Xbert AI",
-      "connected_calls": 28,
-      "with_summary": 23,
-      "short_isdc": 0,
-      "long_composite": 23
-    },
-    {
-      "campaignName": "Xbert Shop - IVA",
-      "connected_calls": 17,
-      "with_summary": 15,
-      "short_isdc": 0,
-      "long_composite": 15
-    },
-    {
-      "campaignName": "Xbert Care - DTMF",
-      "connected_calls": 12,
-      "with_summary": 8,
-      "short_isdc": 0,
-      "long_composite": 8
-    },
-    {
-      "campaignName": "Title Insurance Demo",
-      "connected_calls": 10,
-      "with_summary": 10,
-      "short_isdc": 0,
-      "long_composite": 0
-    },
-    {
-      "campaignName": "Connor Test",
-      "connected_calls": 10,
-      "with_summary": 5,
-      "short_isdc": 0,
-      "long_composite": 5
-    },
-    {
-      "campaignName": "PSI",
-      "connected_calls": 9,
-      "with_summary": 9,
-      "short_isdc": 0,
-      "long_composite": 9
-    },
-    {
-      "campaignName": "Xbert Shop - Outbound",
-      "connected_calls": 8,
-      "with_summary": 7,
-      "short_isdc": 3,
-      "long_composite": 4
-    },
-    {
-      "campaignName": "Xbert Care - IVA",
-      "connected_calls": 5,
-      "with_summary": 4,
-      "short_isdc": 0,
-      "long_composite": 4
-    },
-    {
-      "campaignName": "Xbert Intake - IVA",
-      "connected_calls": 5,
-      "with_summary": 5,
-      "short_isdc": 5,
-      "long_composite": 0
-    },
-    {
-      "campaignName": "Xbert Bank - IVA",
-      "connected_calls": 3,
-      "with_summary": 3,
-      "short_isdc": 0,
-      "long_composite": 3
-    },
-    {
-      "campaignName": "Xbert Care - Outbound",
-      "connected_calls": 1,
-      "with_summary": 1,
-      "short_isdc": 1,
-      "long_composite": 0
-    },
-    {
-      "campaignName": "Xbert Bank - Outbound",
-      "connected_calls": 1,
-      "with_summary": 0,
-      "short_isdc": 0,
-      "long_composite": 0
-    }
-  ],
-  "wrap_by_summary": [
-    {
-      "summary_type": "no summary",
-      "calls": 88,
-      "wrapup_p25_sec": 14.7,
-      "wrapup_median_sec": 20.9,
-      "wrapup_p75_sec": 36.4
-    },
-    {
-      "summary_type": "short ISDC",
-      "calls": 8,
-      "wrapup_p25_sec": 31.7,
-      "wrapup_median_sec": 39.7,
-      "wrapup_p75_sec": 84.5
-    },
-    {
-      "summary_type": "long composite",
-      "calls": 135,
-      "wrapup_p25_sec": 30.2,
-      "wrapup_median_sec": 51.4,
-      "wrapup_p75_sec": 148.4
-    },
-    {
-      "summary_type": "other",
-      "calls": 10,
-      "wrapup_p25_sec": 43.6,
-      "wrapup_median_sec": 61.0,
-      "wrapup_p75_sec": 162.9
-    }
-  ],
-  "stuck_calls": [
-    {
-      "campaignName": "Xbert Shop - IVA",
-      "dispositionName": "Pending - Escalated to Support",
-      "wrap_hours": 287.3
-    },
-    {
-      "campaignName": "Xbert Shop - IVA",
-      "dispositionName": "Pending - Escalated to Support",
-      "wrap_hours": 280.8
-    },
-    {
-      "campaignName": "TEST ConnorW Bank DTMF",
-      "dispositionName": "Answering Machine",
-      "wrap_hours": 149.3
-    },
-    {
-      "campaignName": "Xbert Shop - DTMF",
-      "dispositionName": "Pending - Escalated to Support",
-      "wrap_hours": 72.8
-    },
-    {
-      "campaignName": "TEST ConnorW Bank DTMF",
-      "dispositionName": "Cancel Appointment",
-      "wrap_hours": 14.5
-    }
-  ],
-  "termination_codes": [
-    {
-      "terminationReason": "20",
-      "workitems": 424,
-      "abandoned_workitems": 0,
-      "transferred_workitems": 84
-    },
-    {
-      "terminationReason": "2",
-      "workitems": 227,
-      "abandoned_workitems": 0,
-      "transferred_workitems": 12
-    },
-    {
-      "terminationReason": "1",
-      "workitems": 155,
-      "abandoned_workitems": 0,
-      "transferred_workitems": 31
-    },
-    {
-      "terminationReason": "6",
-      "workitems": 68,
-      "abandoned_workitems": 68,
-      "transferred_workitems": 9
-    },
-    {
-      "terminationReason": "22",
-      "workitems": 6,
-      "abandoned_workitems": 0,
-      "transferred_workitems": 0
-    },
-    {
-      "terminationReason": "21",
-      "workitems": 2,
-      "abandoned_workitems": 0,
-      "transferred_workitems": 0
-    },
-    {
-      "terminationReason": "24",
-      "workitems": 1,
-      "abandoned_workitems": 0,
-      "transferred_workitems": 0
-    },
-    {
-      "terminationReason": "9",
-      "workitems": 1,
-      "abandoned_workitems": 0,
-      "transferred_workitems": 0
-    }
-  ],
-  "recent_calls": [
-    {
-      "workitem": "7bf366eb",
-      "channelType": "OutboundCall",
-      "talk_sec": 33.9,
-      "wrapup_sec": 39.7,
-      "summary_type": "short",
-      "customer_sentiment": "Frustrated and urgent"
-    },
-    {
-      "workitem": "cb4c27e0",
-      "channelType": "InboundCall",
-      "talk_sec": 100.5,
-      "wrapup_sec": 58.9,
-      "summary_type": "long",
-      "customer_sentiment": null
-    },
-    {
-      "workitem": "75555d7d",
-      "channelType": "InboundCall",
-      "talk_sec": 43.4,
-      "wrapup_sec": 31.6,
-      "summary_type": "none",
-      "customer_sentiment": null
-    },
-    {
-      "workitem": "1708e9c4",
-      "channelType": "OutboundCall",
-      "talk_sec": 25.2,
-      "wrapup_sec": 40.1,
-      "summary_type": "none",
-      "customer_sentiment": null
-    },
-    {
-      "workitem": "62be6597",
-      "channelType": "OutboundCall",
-      "talk_sec": 20.7,
-      "wrapup_sec": 145.7,
-      "summary_type": "none",
-      "customer_sentiment": null
-    },
-    {
-      "workitem": "893e73e1",
-      "channelType": "InboundCall",
-      "talk_sec": 1161.3,
-      "wrapup_sec": 444.0,
-      "summary_type": "long",
-      "customer_sentiment": "Neutral to satisfied"
-    },
-    {
-      "workitem": "b76995cb",
-      "channelType": "InboundCall",
-      "talk_sec": 200.0,
-      "wrapup_sec": 42.8,
-      "summary_type": "long",
-      "customer_sentiment": "Confused and testing the system"
-    },
-    {
-      "workitem": "aea9acea",
-      "channelType": "OutboundCall",
-      "talk_sec": 2.3,
-      "wrapup_sec": 18.9,
-      "summary_type": "short",
-      "customer_sentiment": "Neutral to abrupt"
-    },
-    {
-      "workitem": "b4dda44f",
-      "channelType": "OutboundCall",
-      "talk_sec": 251.9,
-      "wrapup_sec": 43.5,
-      "summary_type": "long",
-      "customer_sentiment": "Neutral"
-    },
-    {
-      "workitem": "5c0b61a5",
-      "channelType": "OutboundCall",
-      "talk_sec": 31.5,
-      "wrapup_sec": 32.1,
-      "summary_type": "short",
-      "customer_sentiment": "Neutral"
-    },
-    {
-      "workitem": "9d8e5b9f",
-      "channelType": "InboundCall",
-      "talk_sec": 165.9,
-      "wrapup_sec": 25.8,
-      "summary_type": "long",
-      "customer_sentiment": "Concerned"
-    },
-    {
-      "workitem": "bd0a60a6",
-      "channelType": "InboundCall",
-      "talk_sec": 150.2,
-      "wrapup_sec": 116.0,
-      "summary_type": "short",
-      "customer_sentiment": "Neutral to receptive"
-    },
-    {
-      "workitem": "76e01eba",
-      "channelType": "InboundCall",
-      "talk_sec": 76.9,
-      "wrapup_sec": 879.1,
-      "summary_type": "long",
-      "customer_sentiment": "Neutral tone"
-    },
-    {
-      "workitem": "5a4515c9",
-      "channelType": "InboundCall",
-      "talk_sec": 280.6,
-      "wrapup_sec": 38.8,
-      "summary_type": "long",
-      "customer_sentiment": "Very negative"
-    },
-    {
-      "workitem": "a1b79d71",
-      "channelType": "InboundCall",
-      "talk_sec": 10.7,
-      "wrapup_sec": 20.7,
-      "summary_type": "long",
-      "customer_sentiment": "Concerned or surprised (muted at start)"
-    },
-    {
-      "workitem": "36afb24b",
-      "channelType": "InboundCall",
-      "talk_sec": 217.6,
-      "wrapup_sec": 117.1,
-      "summary_type": "long",
-      "customer_sentiment": "Very negative"
-    },
-    {
-      "workitem": "290858a8",
-      "channelType": "InboundCall",
-      "talk_sec": 32.4,
-      "wrapup_sec": 24.9,
-      "summary_type": "long",
-      "customer_sentiment": "Neutral, asked for a person"
-    }
-  ],
+  "coverage": [],
+  "wrap_by_summary": [],
+  "stuck_calls": [],
+  "termination_codes": [],
+  "recent_calls": [],
   "channels": [
     {
       "channelType": "InboundCall",
-      "workitems": 466,
-      "abandoned": 62,
-      "transferred": 135,
-      "joined_workitems": 468,
-      "with_summary": 142
+      "workitems": 444,
+      "abandoned": 0,
+      "transferred": 0,
+      "connected": 0,
+      "joined_workitems": 444,
+      "with_summary": 0,
+      "handle_avg_sec_capped": null
     },
     {
       "channelType": "OutboundCall",
-      "workitems": 205,
-      "abandoned": 0,
-      "transferred": 1,
-      "joined_workitems": 205,
-      "with_summary": 29
-    },
-    {
-      "channelType": "Survey",
-      "workitems": 68,
+      "workitems": 193,
       "abandoned": 0,
       "transferred": 0,
-      "joined_workitems": 68,
-      "with_summary": 0
+      "connected": 0,
+      "joined_workitems": 193,
+      "with_summary": 0,
+      "handle_avg_sec_capped": null
     },
     {
       "channelType": "InboundSMS",
-      "workitems": 66,
+      "workitems": 61,
       "abandoned": 0,
       "transferred": 0,
-      "joined_workitems": null,
-      "with_summary": null
+      "connected": 0,
+      "joined_workitems": 61,
+      "with_summary": 0,
+      "handle_avg_sec_capped": null
     },
     {
       "channelType": "Chat",
-      "workitems": 30,
-      "abandoned": 5,
+      "workitems": 28,
+      "abandoned": 0,
       "transferred": 0,
-      "joined_workitems": 30,
-      "with_summary": 21
+      "connected": 0,
+      "joined_workitems": 28,
+      "with_summary": 0,
+      "handle_avg_sec_capped": null
     },
     {
       "channelType": "Email",
       "workitems": 17,
       "abandoned": 0,
       "transferred": 0,
+      "connected": 0,
       "joined_workitems": 17,
-      "with_summary": 0
+      "with_summary": 0,
+      "handle_avg_sec_capped": null
     },
     {
       "channelType": "PredictiveCall",
       "workitems": 16,
       "abandoned": 0,
       "transferred": 0,
+      "connected": 0,
       "joined_workitems": 16,
-      "with_summary": 14
+      "with_summary": 0,
+      "handle_avg_sec_capped": null
     },
     {
       "channelType": "OutboundEmail",
-      "workitems": 7,
+      "workitems": 6,
       "abandoned": 0,
       "transferred": 0,
-      "joined_workitems": 7,
-      "with_summary": 0
+      "connected": 0,
+      "joined_workitems": 6,
+      "with_summary": 0,
+      "handle_avg_sec_capped": null
     },
     {
       "channelType": "OutboundSMS",
-      "workitems": 5,
-      "abandoned": 1,
+      "workitems": 4,
+      "abandoned": 0,
       "transferred": 0,
-      "joined_workitems": null,
-      "with_summary": null
+      "connected": 0,
+      "joined_workitems": 4,
+      "with_summary": 0,
+      "handle_avg_sec_capped": null
     },
     {
       "channelType": "PredictiveSMS",
       "workitems": 4,
       "abandoned": 0,
       "transferred": 0,
+      "connected": 0,
       "joined_workitems": 4,
-      "with_summary": 0
+      "with_summary": 0,
+      "handle_avg_sec_capped": null
     },
     {
       "channelType": "ProgressiveCall",
       "workitems": 1,
       "abandoned": 0,
       "transferred": 0,
+      "connected": 0,
       "joined_workitems": 1,
-      "with_summary": 1
+      "with_summary": 0,
+      "handle_avg_sec_capped": null
     }
   ],
-  "agents": [],
-  "ai_evals": [
+  "agents": [
     {
-      "workitem": "61265671",
-      "campaignName": "Xbert Care - DTMF",
-      "channelType": "InboundSMS",
-      "transferred_to_agent": true,
-      "talk_sec": null,
-      "day": "2026-10-08",
-      "created_ms": 1791490188283,
-      "template": "long",
-      "composite": 62,
-      "grade": "D",
-      "benchmark_label": "At benchmark",
-      "pillar_names": [
-        "Integrity",
-        "Skill",
-        "Diligence",
-        "Care"
-      ],
-      "pillar_scores": [
-        3,
-        2,
-        2,
-        3
-      ],
-      "customer_sentiment": "Neutral",
-      "agent_sentiment": "Neutral",
-      "reason": "Patient requested general assistance and was routed to the transfer queue.",
-      "summary_disposition": "Transferred",
-      "interaction_type": "Billing-Assisted",
-      "coaching": [
-        "1. Proactive Inquiry"
-      ]
+      "agent_name": "No Agent",
+      "agent_login": "no.agent",
+      "workitems": 774,
+      "calls": 654,
+      "chats": 28,
+      "sms": 69,
+      "emails": 23,
+      "connected_calls": 0,
+      "transferred": 0,
+      "with_summary": 0,
+      "first_seen": "2026-09-03",
+      "last_seen": "2026-10-11",
+      "handle_avg_sec_capped": null
+    }
+  ],
+  "agent_days": 30,
+  "daily": [
+    {
+      "day": "2026-09-03",
+      "workitems": 1,
+      "voice": 0,
+      "dialer": 0,
+      "chat": 0,
+      "sms": 0,
+      "email": 1,
+      "survey": 0,
+      "abandoned": 0
     },
     {
-      "workitem": "7bf366eb",
-      "campaignName": "Xbert Shop - Outbound",
-      "channelType": "OutboundCall",
-      "transferred_to_agent": false,
-      "talk_sec": 33.9,
+      "day": "2026-09-08",
+      "workitems": 2,
+      "voice": 1,
+      "dialer": 0,
+      "chat": 0,
+      "sms": 1,
+      "email": 0,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
+      "day": "2026-09-10",
+      "workitems": 1,
+      "voice": 1,
+      "dialer": 0,
+      "chat": 0,
+      "sms": 0,
+      "email": 0,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
+      "day": "2026-09-12",
+      "workitems": 3,
+      "voice": 2,
+      "dialer": 0,
+      "chat": 0,
+      "sms": 1,
+      "email": 0,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
+      "day": "2026-09-13",
+      "workitems": 6,
+      "voice": 6,
+      "dialer": 0,
+      "chat": 0,
+      "sms": 0,
+      "email": 0,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
+      "day": "2026-09-14",
+      "workitems": 18,
+      "voice": 16,
+      "dialer": 0,
+      "chat": 1,
+      "sms": 1,
+      "email": 0,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
+      "day": "2026-09-15",
+      "workitems": 44,
+      "voice": 43,
+      "dialer": 0,
+      "chat": 0,
+      "sms": 1,
+      "email": 0,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
+      "day": "2026-09-16",
+      "workitems": 25,
+      "voice": 17,
+      "dialer": 4,
+      "chat": 1,
+      "sms": 2,
+      "email": 1,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
+      "day": "2026-09-17",
+      "workitems": 32,
+      "voice": 20,
+      "dialer": 2,
+      "chat": 1,
+      "sms": 5,
+      "email": 4,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
+      "day": "2026-09-18",
+      "workitems": 43,
+      "voice": 40,
+      "dialer": 0,
+      "chat": 1,
+      "sms": 2,
+      "email": 0,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
+      "day": "2026-09-21",
+      "workitems": 27,
+      "voice": 17,
+      "dialer": 0,
+      "chat": 1,
+      "sms": 9,
+      "email": 0,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
+      "day": "2026-09-22",
+      "workitems": 17,
+      "voice": 6,
+      "dialer": 7,
+      "chat": 0,
+      "sms": 4,
+      "email": 0,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
+      "day": "2026-09-23",
+      "workitems": 26,
+      "voice": 19,
+      "dialer": 3,
+      "chat": 0,
+      "sms": 4,
+      "email": 0,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
+      "day": "2026-09-24",
+      "workitems": 36,
+      "voice": 31,
+      "dialer": 0,
+      "chat": 4,
+      "sms": 0,
+      "email": 1,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
+      "day": "2026-09-25",
+      "workitems": 51,
+      "voice": 24,
+      "dialer": 0,
+      "chat": 7,
+      "sms": 7,
+      "email": 13,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
+      "day": "2026-09-27",
+      "workitems": 4,
+      "voice": 4,
+      "dialer": 0,
+      "chat": 0,
+      "sms": 0,
+      "email": 0,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
+      "day": "2026-09-28",
+      "workitems": 81,
+      "voice": 74,
+      "dialer": 1,
+      "chat": 2,
+      "sms": 3,
+      "email": 1,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
+      "day": "2026-09-29",
+      "workitems": 24,
+      "voice": 21,
+      "dialer": 0,
+      "chat": 1,
+      "sms": 2,
+      "email": 0,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
+      "day": "2026-09-30",
+      "workitems": 57,
+      "voice": 54,
+      "dialer": 0,
+      "chat": 1,
+      "sms": 2,
+      "email": 0,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
+      "day": "2026-10-01",
+      "workitems": 53,
+      "voice": 41,
+      "dialer": 3,
+      "chat": 2,
+      "sms": 6,
+      "email": 1,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
+      "day": "2026-10-02",
+      "workitems": 11,
+      "voice": 10,
+      "dialer": 1,
+      "chat": 0,
+      "sms": 0,
+      "email": 0,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
+      "day": "2026-10-03",
+      "workitems": 4,
+      "voice": 4,
+      "dialer": 0,
+      "chat": 0,
+      "sms": 0,
+      "email": 0,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
+      "day": "2026-10-04",
+      "workitems": 4,
+      "voice": 4,
+      "dialer": 0,
+      "chat": 0,
+      "sms": 0,
+      "email": 0,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
+      "day": "2026-10-05",
+      "workitems": 59,
+      "voice": 52,
+      "dialer": 0,
+      "chat": 4,
+      "sms": 3,
+      "email": 0,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
+      "day": "2026-10-06",
+      "workitems": 110,
+      "voice": 102,
+      "dialer": 0,
+      "chat": 2,
+      "sms": 5,
+      "email": 1,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
+      "day": "2026-10-07",
+      "workitems": 15,
+      "voice": 11,
+      "dialer": 0,
+      "chat": 0,
+      "sms": 4,
+      "email": 0,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
+      "day": "2026-10-08",
+      "workitems": 4,
+      "voice": 1,
+      "dialer": 0,
+      "chat": 0,
+      "sms": 3,
+      "email": 0,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
       "day": "2026-10-09",
-      "created_ms": 1791560175622,
-      "template": "short",
-      "composite": 31,
-      "grade": null,
-      "benchmark_label": null,
-      "pillar_names": [
-        "Care",
-        "Diligence",
-        "Integrity",
-        "Skill"
-      ],
-      "pillar_scores": [
-        1,
-        1,
-        2,
-        1
-      ],
-      "customer_sentiment": "Frustrated and urgent",
-      "agent_sentiment": "Unresponsive and erratic",
-      "reason": null,
-      "summary_disposition": null,
-      "interaction_type": "Order-Assisted (attempted, but failed)",
-      "coaching": []
+      "workitems": 7,
+      "voice": 7,
+      "dialer": 0,
+      "chat": 0,
+      "sms": 0,
+      "email": 0,
+      "survey": 0,
+      "abandoned": 0
+    },
+    {
+      "day": "2026-10-11",
+      "workitems": 9,
+      "voice": 9,
+      "dialer": 0,
+      "chat": 0,
+      "sms": 0,
+      "email": 0,
+      "survey": 0,
+      "abandoned": 0
     }
   ],
-  "daily": [],
-  "hourly": [],
-  "dispositions": []
+  "hourly": [
+    {
+      "dow": 1,
+      "hour": 8,
+      "workitems": 4
+    },
+    {
+      "dow": 1,
+      "hour": 9,
+      "workitems": 2
+    },
+    {
+      "dow": 1,
+      "hour": 12,
+      "workitems": 4
+    },
+    {
+      "dow": 1,
+      "hour": 13,
+      "workitems": 2
+    },
+    {
+      "dow": 1,
+      "hour": 16,
+      "workitems": 1
+    },
+    {
+      "dow": 1,
+      "hour": 18,
+      "workitems": 8
+    },
+    {
+      "dow": 1,
+      "hour": 21,
+      "workitems": 2
+    },
+    {
+      "dow": 2,
+      "hour": 6,
+      "workitems": 4
+    },
+    {
+      "dow": 2,
+      "hour": 7,
+      "workitems": 9
+    },
+    {
+      "dow": 2,
+      "hour": 8,
+      "workitems": 14
+    },
+    {
+      "dow": 2,
+      "hour": 9,
+      "workitems": 22
+    },
+    {
+      "dow": 2,
+      "hour": 10,
+      "workitems": 27
+    },
+    {
+      "dow": 2,
+      "hour": 11,
+      "workitems": 21
+    },
+    {
+      "dow": 2,
+      "hour": 12,
+      "workitems": 7
+    },
+    {
+      "dow": 2,
+      "hour": 13,
+      "workitems": 29
+    },
+    {
+      "dow": 2,
+      "hour": 14,
+      "workitems": 4
+    },
+    {
+      "dow": 2,
+      "hour": 15,
+      "workitems": 10
+    },
+    {
+      "dow": 2,
+      "hour": 16,
+      "workitems": 11
+    },
+    {
+      "dow": 2,
+      "hour": 17,
+      "workitems": 1
+    },
+    {
+      "dow": 3,
+      "hour": 6,
+      "workitems": 17
+    },
+    {
+      "dow": 3,
+      "hour": 7,
+      "workitems": 51
+    },
+    {
+      "dow": 3,
+      "hour": 8,
+      "workitems": 23
+    },
+    {
+      "dow": 3,
+      "hour": 9,
+      "workitems": 13
+    },
+    {
+      "dow": 3,
+      "hour": 10,
+      "workitems": 21
+    },
+    {
+      "dow": 3,
+      "hour": 11,
+      "workitems": 8
+    },
+    {
+      "dow": 3,
+      "hour": 12,
+      "workitems": 24
+    },
+    {
+      "dow": 3,
+      "hour": 13,
+      "workitems": 2
+    },
+    {
+      "dow": 3,
+      "hour": 14,
+      "workitems": 11
+    },
+    {
+      "dow": 3,
+      "hour": 15,
+      "workitems": 2
+    },
+    {
+      "dow": 3,
+      "hour": 16,
+      "workitems": 1
+    },
+    {
+      "dow": 4,
+      "hour": 7,
+      "workitems": 8
+    },
+    {
+      "dow": 4,
+      "hour": 8,
+      "workitems": 6
+    },
+    {
+      "dow": 4,
+      "hour": 9,
+      "workitems": 7
+    },
+    {
+      "dow": 4,
+      "hour": 10,
+      "workitems": 17
+    },
+    {
+      "dow": 4,
+      "hour": 11,
+      "workitems": 24
+    },
+    {
+      "dow": 4,
+      "hour": 12,
+      "workitems": 18
+    },
+    {
+      "dow": 4,
+      "hour": 13,
+      "workitems": 8
+    },
+    {
+      "dow": 4,
+      "hour": 14,
+      "workitems": 6
+    },
+    {
+      "dow": 4,
+      "hour": 15,
+      "workitems": 6
+    },
+    {
+      "dow": 4,
+      "hour": 16,
+      "workitems": 1
+    },
+    {
+      "dow": 5,
+      "hour": 4,
+      "workitems": 3
+    },
+    {
+      "dow": 5,
+      "hour": 5,
+      "workitems": 4
+    },
+    {
+      "dow": 5,
+      "hour": 6,
+      "workitems": 4
+    },
+    {
+      "dow": 5,
+      "hour": 7,
+      "workitems": 9
+    },
+    {
+      "dow": 5,
+      "hour": 8,
+      "workitems": 23
+    },
+    {
+      "dow": 5,
+      "hour": 9,
+      "workitems": 15
+    },
+    {
+      "dow": 5,
+      "hour": 10,
+      "workitems": 9
+    },
+    {
+      "dow": 5,
+      "hour": 11,
+      "workitems": 8
+    },
+    {
+      "dow": 5,
+      "hour": 12,
+      "workitems": 8
+    },
+    {
+      "dow": 5,
+      "hour": 13,
+      "workitems": 3
+    },
+    {
+      "dow": 5,
+      "hour": 14,
+      "workitems": 1
+    },
+    {
+      "dow": 5,
+      "hour": 16,
+      "workitems": 7
+    },
+    {
+      "dow": 6,
+      "hour": 7,
+      "workitems": 6
+    },
+    {
+      "dow": 6,
+      "hour": 8,
+      "workitems": 7
+    },
+    {
+      "dow": 6,
+      "hour": 9,
+      "workitems": 18
+    },
+    {
+      "dow": 6,
+      "hour": 10,
+      "workitems": 15
+    },
+    {
+      "dow": 6,
+      "hour": 11,
+      "workitems": 9
+    },
+    {
+      "dow": 6,
+      "hour": 12,
+      "workitems": 15
+    },
+    {
+      "dow": 6,
+      "hour": 13,
+      "workitems": 6
+    },
+    {
+      "dow": 6,
+      "hour": 16,
+      "workitems": 2
+    },
+    {
+      "dow": 6,
+      "hour": 18,
+      "workitems": 2
+    },
+    {
+      "dow": 6,
+      "hour": 19,
+      "workitems": 1
+    },
+    {
+      "dow": 7,
+      "hour": 8,
+      "workitems": 2
+    },
+    {
+      "dow": 7,
+      "hour": 12,
+      "workitems": 2
+    },
+    {
+      "dow": 7,
+      "hour": 13,
+      "workitems": 1
+    },
+    {
+      "dow": 7,
+      "hour": 21,
+      "workitems": 1
+    }
+  ],
+  "dispositions": [],
+  "ai_evals": [],
+  "users": [
+    {
+      "name": "Ian Landau",
+      "login": "ian.landau+comboncc",
+      "active": true
+    },
+    {
+      "name": "John Kida",
+      "login": "jkida+comboncc",
+      "active": true
+    },
+    {
+      "name": "Patrick Hoye",
+      "login": "phoye+superadmin",
+      "active": true
+    },
+    {
+      "name": "Karina Bates",
+      "login": "phoye+superagent",
+      "active": true
+    },
+    {
+      "name": "Russ Ellison",
+      "login": "phoye+supersupervisor",
+      "active": true
+    },
+    {
+      "name": "Zaku Mobile Suit",
+      "login": "thomas.nosbish+superagent",
+      "active": true
+    },
+    {
+      "name": "Char Aznable",
+      "login": "thomas.nosbish+supersupervisor",
+      "active": true
+    },
+    {
+      "name": "Thomas Nosbish",
+      "login": "thomas.nosbish+superadmin",
+      "active": true
+    },
+    {
+      "name": "Tom Agent",
+      "login": "michael.deemer+superagent",
+      "active": true
+    },
+    {
+      "name": "Bert Supervisor",
+      "login": "michael.deemer+supersupervisor",
+      "active": true
+    },
+    {
+      "name": "Michael Deemer",
+      "login": "michael.deemer+superadmin",
+      "active": true
+    },
+    {
+      "name": "Christopher Williams",
+      "login": "jmarquez+superagent",
+      "active": true
+    },
+    {
+      "name": "Mari Gonzalez",
+      "login": "jmarquez+supersupervisor",
+      "active": true
+    },
+    {
+      "name": "Jos\u00e9 Marquez",
+      "login": "jmarquez+superadmin",
+      "active": true
+    },
+    {
+      "name": "Madelyn Gray",
+      "login": "derek.gray+superagent",
+      "active": true
+    },
+    {
+      "name": "Derek Gray",
+      "login": "derek.gray+supersupervisor",
+      "active": true
+    },
+    {
+      "name": "Derek Gray",
+      "login": "derek.gray+superadmin",
+      "active": true
+    },
+    {
+      "name": "Ruby Rhod",
+      "login": "ryan.mann+superagent",
+      "active": true
+    },
+    {
+      "name": "Jean-Baptiste Zorg",
+      "login": "ryan.mann+supersupervisor",
+      "active": true
+    },
+    {
+      "name": "Ryan Mann",
+      "login": "ryan.mann+superadmin",
+      "active": true
+    },
+    {
+      "name": "Katie Lang",
+      "login": "cathryn.valladares+superagent",
+      "active": true
+    },
+    {
+      "name": "Michael Brown",
+      "login": "cathryn.valladares+supersupervisor",
+      "active": true
+    },
+    {
+      "name": "Cathryn Valladares",
+      "login": "cathryn.valladares+superadmin",
+      "active": true
+    },
+    {
+      "name": "Jamie Breen",
+      "login": "jamie.breen+superagent",
+      "active": true
+    },
+    {
+      "name": "Jamie Breen",
+      "login": "jamie.breen+superadmin",
+      "active": true
+    },
+    {
+      "name": "Justin Anderson",
+      "login": "ian.landau+superagent",
+      "active": true
+    },
+    {
+      "name": "Jack Ryan",
+      "login": "eryckson.deguzman+superagent",
+      "active": true
+    },
+    {
+      "name": "Bridget Jones",
+      "login": "eryckson.deguzman+supersupervisor",
+      "active": true
+    },
+    {
+      "name": "Eryckson de Guzman",
+      "login": "eryckson.deguzman+superadmin",
+      "active": true
+    },
+    {
+      "name": "Forrest Gump",
+      "login": "ryan.ricken+superagent",
+      "active": true
+    },
+    {
+      "name": "Ryan Ricken",
+      "login": "ryan.ricken+superadmin",
+      "active": true
+    },
+    {
+      "name": "Richard Nelson",
+      "login": "richard.nelson+superadmin",
+      "active": true
+    },
+    {
+      "name": "Emma Watson",
+      "login": "megha.sharma+superagent",
+      "active": true
+    },
+    {
+      "name": "Aryna Sabalenka",
+      "login": "megha.sharma+supersupervisor",
+      "active": true
+    },
+    {
+      "name": "Megha Sharma",
+      "login": "megha.sharma+superadmin",
+      "active": true
+    },
+    {
+      "name": "JF Diotte",
+      "login": "jf.diotte+comboncc",
+      "active": true
+    },
+    {
+      "name": "Thomas Jefferson",
+      "login": "dominic.hayden+superagent",
+      "active": true
+    },
+    {
+      "name": "Abraham Lincoln",
+      "login": "dominic.hayden+supersupervisor",
+      "active": true
+    },
+    {
+      "name": "Dominic Hayden",
+      "login": "dominic.hayden+superadmin",
+      "active": true
+    },
+    {
+      "name": "Vlad Khudyk",
+      "login": "vladyslav.khudyk+4258998",
+      "active": true
+    },
+    {
+      "name": "Vijay Dharmaraj",
+      "login": "vijay.dharmaraj+4258998",
+      "active": true
+    },
+    {
+      "name": "Jerry Santangelo",
+      "login": "jmarquez+adminsuper",
+      "active": true
+    },
+    {
+      "name": "Maria Gonzalez",
+      "login": "jmarquez+supervisorsuper",
+      "active": true
+    },
+    {
+      "name": "Supervisor Landau",
+      "login": "ian.landau+supersuper",
+      "active": true
+    },
+    {
+      "name": "Antonio Agent",
+      "login": "antonio.landgrave+superagent",
+      "active": true
+    },
+    {
+      "name": "Antonio Admin",
+      "login": "antonio.landgrave+superadmin",
+      "active": true
+    },
+    {
+      "name": "Vijay Dharmaraj",
+      "login": "vijay.dharmaraj+4258998sup",
+      "active": true
+    },
+    {
+      "name": "Eric Foreman",
+      "login": "jamaal.savwoir+superagent",
+      "active": true
+    },
+    {
+      "name": "Jamaal Savwoir",
+      "login": "jamaal.savwoir+supervisor1",
+      "active": true
+    },
+    {
+      "name": "David Jaramillo",
+      "login": "david.jaramillo+4258998",
+      "active": true
+    },
+    {
+      "name": "Serhii Nahornyi",
+      "login": "serhii.nahornyi+superadmin",
+      "active": true
+    },
+    {
+      "name": "Chetan Dhole",
+      "login": "chetan.dhole+super",
+      "active": true
+    },
+    {
+      "name": "Sarah Conner",
+      "login": "mnelson",
+      "active": false
+    },
+    {
+      "name": "Jamaal Savwoir",
+      "login": "jamaal.savwoir+superadmin",
+      "active": true
+    },
+    {
+      "name": "Maxx de Greatest",
+      "login": "eryckson.deguzman+supermaxx",
+      "active": true
+    },
+    {
+      "name": "Greg Roth",
+      "login": "greg.roth+superadmin",
+      "active": true
+    },
+    {
+      "name": "Luis Alcina",
+      "login": "luis.alcina+superadmin",
+      "active": true
+    },
+    {
+      "name": "Joshua Billups",
+      "login": "joshua.billups+superagent",
+      "active": true
+    },
+    {
+      "name": "Joshua Admin",
+      "login": "joshua.billups+superadmin",
+      "active": true
+    },
+    {
+      "name": "yashavantha rao",
+      "login": "yashavantha.rao+4258998",
+      "active": true
+    },
+    {
+      "name": "Ethan Walker",
+      "login": "ron.kjelden+superagent",
+      "active": true
+    },
+    {
+      "name": "Ron Kjelden",
+      "login": "ron.kjelden+superadmin",
+      "active": true
+    },
+    {
+      "name": "Megan Brooks",
+      "login": "ron.kjelden+supersupervisor",
+      "active": true
+    },
+    {
+      "name": "Andy Borodow",
+      "login": "andrew.borodow+supertenant",
+      "active": false
+    },
+    {
+      "name": "Jason Ortega",
+      "login": "jason.ortega+super",
+      "active": true
+    },
+    {
+      "name": "Kaushik S",
+      "login": "kaushik.s+comboncc",
+      "active": true
+    },
+    {
+      "name": "James Bird",
+      "login": "james.bird+superadmin",
+      "active": true
+    },
+    {
+      "name": "John Smith",
+      "login": "eryckson.deguzman+js",
+      "active": true
+    },
+    {
+      "name": "Nathan MacKinnon",
+      "login": "anna.ronan",
+      "active": false
+    },
+    {
+      "name": "Dan Wieners",
+      "login": "daniel.wieners+superadmin",
+      "active": true
+    },
+    {
+      "name": "Alan Cordova",
+      "login": "alan.cordova+4258998",
+      "active": true
+    },
+    {
+      "name": "Lionel Messi",
+      "login": "jean123.dev+supervisor",
+      "active": true
+    },
+    {
+      "name": "Cristiano Ronaldo",
+      "login": "jean123.dev+agent",
+      "active": true
+    },
+    {
+      "name": "Connor Williams",
+      "login": "connor.williams+superadmin",
+      "active": true
+    },
+    {
+      "name": "Frodo Baggins",
+      "login": "connor.williams+superagent",
+      "active": true
+    },
+    {
+      "name": "Carl Wheezer",
+      "login": "billy.weber+superagent",
+      "active": true
+    },
+    {
+      "name": "Billy Weber",
+      "login": "billy.weber+superadmin",
+      "active": true
+    },
+    {
+      "name": "Connor Admin",
+      "login": "connor.williams+superadmin2",
+      "active": true
+    }
+  ]
 }
