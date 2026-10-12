@@ -116,7 +116,7 @@ def norm(w, wtype):
     wrap = ev_sum(ev, "userdisposition")
     disp = next((e.get("displayName") for e in ev if e.get("type") == "userdisposition" and e.get("displayName")), None)
     created = w.get("createdAt") or 0
-    summ = w.get("summary") or None
+    summ = w.get("summary") or (w.get("aiSummary") if isinstance(w.get("aiSummary"), str) else None) or None
     cid = w.get("campaignId") or ""
     cname = w.get("campaignName")
     craw = w.get("campaign")
@@ -129,7 +129,7 @@ def norm(w, wtype):
         else:
             cname = cname or craw
     return {
-        "type": w.get("type") or w.get("workitemType") or "Unknown", "id": str(w.get("_id") or w.get("workitemId") or w.get("callId") or ""),
+        "has_events": bool(ev), "type": w.get("type") or w.get("workitemType") or "Unknown", "id": str(w.get("_id") or w.get("workitemId") or w.get("callId") or ""),
         "created": created, "talk": talk, "hold": hold, "wrap": wrap,
         "abandoned": any(str(e.get("type", "")).startswith("abandon") for e in ev),
         "transferred": any("transfer" in str(e.get("type", "")) for e in ev),
@@ -388,7 +388,30 @@ def main():
             continue
         seen.add(x["id"])
         uniq.append(x)
+    has_events = any(x["has_events"] for x in uniq)
+    has_agent = any(x["agent"] for x in uniq)
+    has_summary = any(x["summary"] for x in uniq)
+    has_disp = any(x["disp"] for x in uniq)
+    say(f"\nAI SUMMARY REPORT: {sum(1 for x in uniq if x['summary'])} of {len(uniq)} workitems have summary text; "
+        f"{sum(1 for x in uniq if x['summary'] and 'composite' in x['summary'])} long composite, "
+        f"{sum(1 for x in uniq if x['summary'] and 'Overall Score' in x['summary'])} short ISDC")
+    say(f"Record has: timeEvents={has_events} agent={has_agent} summary={has_summary} dispositionName={has_disp}")
     out = build(uniq)
+    drop = set()
+    if not has_events:   # no talk/hold/wrap, abandon or transfer data in the record
+        drop |= {"kpis", "coverage", "wrap_by_summary", "stuck_calls", "recent_calls", "channels", "termination_codes"}
+    if not has_agent:
+        drop.add("agents")
+    if not has_summary:
+        drop.add("ai_evals")
+    if not has_disp:
+        drop.add("dispositions")
+    for k in drop:  # leave these out so the dashboard keeps its earlier values instead of showing blanks
+        out.pop(k, None)
+    out["source"] = "api-partial" if drop else "api"
+    if drop:
+        out["notes"] = ["The history record from the API does not carry: " + ", ".join(sorted(drop)) + ". Those sections keep their earlier values."]
+        say("Left out because the record does not have the data:", ", ".join(sorted(drop)))
     if skipped:
         out["partial"] = True
         errors.insert(0, f"Stopped after {MAX_MINUTES} minutes. {skipped} of {len(tasks)} days were skipped (the oldest days).")
@@ -400,7 +423,7 @@ def main():
     if errors:
         out["errors"] = errors[:8]
     (ROOT / "docs" / "data.json").write_text(json.dumps(out, indent=2, default=str))
-    say("Wrote docs/data.json:", len(uniq), "workitems,", len(out["agents"]), "agents,", len(out["ai_evals"]), "AI evaluations,", len(out["users"]), "users,", len(errors), "errors")
+    say("Wrote docs/data.json:", len(uniq), "workitems,", len(out.get("agents", [])), "agents,", len(out.get("ai_evals", [])), "AI evaluations,", len(out.get("users", [])), "users,", len(errors), "errors")
 
 
 if __name__ == "__main__":
