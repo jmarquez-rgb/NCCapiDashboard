@@ -4,6 +4,7 @@ SELECT
   COUNTIF(d.abandoned > 0) AS abandoned,
   COUNTIF(d.transferred > 0) AS transferred,
   COUNTIF(d.talkTime > 0) AS connected,
+  COUNTIF(d.talkTime > 0 AND d.wrapupTime <= 3600000) AS handled_capped,
   ROUND(
     AVG(IF(d.talkTime > 0 AND d.wrapupTime <= 3600000, d.talkTime + d.holdTime + d.wrapupTime, NULL)) / 1000,
     1

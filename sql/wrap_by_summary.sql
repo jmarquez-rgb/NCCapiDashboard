@@ -14,7 +14,6 @@ JOIN `thrio-prod-4258998.4258998.REPORTS_WORKITEMS` AS r
   ON r.callId = d.id
 WHERE d._PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
   AND r._PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
-  AND d.channelType IN ('InboundCall', 'OutboundCall')
   AND d.talkTime > 0
   AND d.wrapupTime <= 3600000
 GROUP BY summary_type

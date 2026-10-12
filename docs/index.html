@@ -704,7 +704,7 @@ function trendsBlock(){
   let heatCard='',dispCard='';
   if(hr.length){const hs=hr.map(x=>+x.hour),h0=Math.min(...hs),h1=Math.max(...hs),cols=[];for(let h=h0;h<=h1;h++)cols.push(h);const hl=h=>(h%12||12)+(h<12?'a':'p');
     const m=DOWN.map((_,di)=>cols.map(h=>{const r=hr.find(x=>+x.dow===di+1&&+x.hour===h);return r?+r.workitems:0}));
-    heatCard=card('Busiest hours (voice)',heat(DOWN,cols.map(hl),m,{lw:'48px',lo:0,rev:true,fmt:v=>'',tip:(i,j,v)=>`<b>${DOWN[i]} ${hl(cols[j])}</b><br>${v} voice workitems`})+`<div class="xs muted mt">Green is quiet and red is busy. Arizona time, last 30 days.</div>`);}
+    heatCard=card('Busiest hours (all channels)',heat(DOWN,cols.map(hl),m,{lw:'48px',lo:0,rev:true,fmt:v=>'',tip:(i,j,v)=>`<b>${DOWN[i]} ${hl(cols[j])}</b><br>${v} workitems`})+`<div class="xs muted mt">Green is quiet and red is busy. Arizona time, last 30 days.</div>`);}
   if(dp.length)dispCard=card('How agents closed workitems (dispositions)',hbars(dp.map(x=>({k:x.dispositionName,v:x.workitems,color:'#5B8BBF',label:esc(x.dispositionName)})),{fmt:fmtN})+'<div class="xs muted mt">Top 12 dispositions.</div>');
   return out+((heatCard||dispCard)?`<div class="g g2">${heatCard}${dispCard}</div>`:'');
 }
@@ -718,53 +718,74 @@ const agentsList=()=>(D.agents&&D.agents.length)?D.agents:[];
 const num=v=>v==null?'<span class="faint">-</span>':fmtN(v);
 const pc=(a,b)=>b?f1(a/b*100)+'%':'-';
 function groups(){const m={};chans().forEach(c=>{const g=groupOf(c.channelType),o=m[g]=m[g]||{g,workitems:0,abandoned:0,transferred:0,joined:0,withSum:0,types:[]};o.workitems+=c.workitems||0;o.abandoned+=c.abandoned||0;o.transferred+=c.transferred||0;if(c.joined_workitems!=null){o.joined+=c.joined_workitems;o.withSum+=c.with_summary||0}o.types.push(c)});return CHG.concat(['Other']).filter(g=>m[g]).map(g=>m[g])}
+
+/* ---------- all-channel overall numbers (falls back to the voice-only snapshot, and says so) ---------- */
+function overall(){
+  const o=D.overall;
+  if(o&&o.workitems!=null)return Object.assign({all:true},o);
+  const gs=groups(),k=D.kpis||{};
+  return {all:false,workitems:sum(gs.map(g=>g.workitems)),abandoned:sum(gs.map(g=>g.abandoned)),transferred:sum(gs.map(g=>g.transferred)),handled:null,handled_capped:null,talk_avg_sec:k.talk_avg_sec,hold_avg_sec:k.hold_avg_sec,wrap_avg_sec:k.acw_avg_sec_capped,aht_mean_sec_capped:k.aht_mean_sec_capped,aht_median_sec:k.aht_median_sec,aht_p90_sec:null,stuck_over_1h:k.stuck_over_1h};
+}
+const ovNote=o=>o.all?'':note('<b>Handle time here is voice only.</b> It comes from the Oct 9 snapshot. Run the main query on <b>Data Sources</b> and paste the result to see handle time for every channel.','warn');
 /* ---------- Overview ---------- */
 P.overview={title:'Contact Center Overview',sub:'All channels · last 30 days · super tenant 4258998',body(){
-  const k=D.kpis,gs=groups(),tot=sum(gs.map(g=>g.workitems)),ab=sum(gs.map(g=>g.abandoned)),tr=sum(gs.map(g=>g.transferred)),ws=sum(gs.map(g=>g.withSum)),jn=sum(gs.map(g=>g.joined)),cs=chans();
-  const inb=cs.find(c=>c.channelType==='InboundCall')||{workitems:0,abandoned:0};
-  const top=`<div class="g g4">
+  const o=overall(),gs=groups(),tot=sum(gs.map(g=>g.workitems)),ab=sum(gs.map(g=>g.abandoned)),tr=sum(gs.map(g=>g.transferred)),ws=sum(gs.map(g=>g.withSum)),jn=sum(gs.map(g=>g.joined)),cs=chans();
+  const top=`<div class="g g5">
    ${kpi('Workitems, all channels',fmtN(tot),cs.length+' channel types in 6 groups',{act:'channels',info:'Every row in DATA_WORKITEMS in the last 30 days, counted by channelType.'})}
-   ${kpi('Abandoned',fmtN(ab),pc(ab,tot)+' of all workitems',{cls:'bad',info:'Workitems where abandoned (milliseconds waited) is above zero. Voice and chat have them.'})}
-   ${kpi('Transferred',fmtN(tr),'meaning not yet confirmed',{info:'transferred is 0 or 1. It may include automatic transfers.'})}
+   ${kpi('Handled by an agent',o.handled!=null?fmtN(o.handled):'-',o.handled!=null?pc(o.handled,o.workitems)+' of workitems':'run the main query',{act:'handle',info:'Workitems with time connected to an agent (talkTime above zero), on any channel.'})}
+   ${kpi('Abandoned',fmtN(ab),pc(ab,tot)+' of all workitems',{cls:'bad',act:'outcomes',info:'Workitems where abandoned (milliseconds waited) is above zero.'})}
+   ${kpi('Contact center handle time',dur(o.aht_mean_sec_capped),o.all?'median '+dur(o.aht_median_sec)+' · all channels':'voice only (snapshot)',{act:'handle',info:'Talk plus hold plus wrap-up for every handled workitem on every channel. Workitems left open over an hour are left out.'})}
    ${kpi('Workitems with an AI summary',fmtN(ws),'of '+fmtN(jn)+' matched ('+pc(ws,jn)+')',{act:'summary',info:'Matched means the workitem also exists in REPORTS_WORKITEMS. SMS did not match in the data we pulled.'})}</div>`;
   const mix=card('Channel mix',donut(gs.map(g=>({k:g.g,v:g.workitems,color:GCOL[g.g],act:'chgo',arg:g.g})),{size:190,center:fmtN(tot),sub:'workitems',fmt:v=>fmtN(v)})+legend(gs.map(g=>({name:g.g,color:GCOL[g.g]}))));
-  const voice=card('Voice at a glance',`<div class="lst"><div class="li"><div class="sp1"><div class="b">Inbound abandon rate</div><div class="muted xs">${inb.abandoned} of ${inb.workitems} inbound calls</div></div><b style="font-size:20px;font-weight:500;color:#D4343A">${pc(inb.abandoned,inb.workitems)}</b></div><div class="li"><div class="sp1"><div class="b">Average handle time</div><div class="muted xs">left-open calls removed</div></div><b style="font-size:20px;font-weight:500">${dur(k.aht_mean_sec_capped)}</b></div><div class="li"><div class="sp1"><div class="b">Median handle time</div><div class="muted xs">all connected calls</div></div><b style="font-size:20px;font-weight:500">${dur(k.aht_median_sec)}</b></div><div class="li"><div class="sp1"><div class="b">Left open over 1 hour</div><div class="muted xs">excluded from handle time</div></div><b style="font-size:20px;font-weight:500">${k.stuck_over_1h}</b></div></div>`,{cls:'click',attr:A('go','handle'),right:'<span class="muted xs">Voice only</span>'});
+  const big=(l,sub,v,c)=>`<div class="li"><div class="sp1"><div class="b">${l}</div><div class="muted xs">${sub}</div></div><b style="font-size:20px;font-weight:500${c?';color:'+c:''}">${v}</b></div>`;
+  const glance=card('Handle time at a glance',`<div class="lst">${big('Average handle time','all channels, left-open removed',dur(o.aht_mean_sec_capped))}${big('Median handle time','half of handled workitems are quicker',dur(o.aht_median_sec))}${big('90th percentile','nine in ten are quicker',o.aht_p90_sec!=null?dur(o.aht_p90_sec):'-')}${big('Handled by an agent','talk time above zero',o.handled!=null?fmtN(o.handled):'-')}${big('Left open over 1 hour','excluded from handle time',o.stuck_over_1h!=null?o.stuck_over_1h:'-')}</div>`,{cls:'click',attr:A('go','handle'),right:'<span class="muted xs">'+(o.all?'All channels':'Voice only (snapshot)')+'</span>'});
   const tbl=card('Performance by channel',table([{h:'Channel'},{h:'Workitems',cls:'r'},{h:'Share',cls:'r'},{h:'Abandoned',cls:'r'},{h:'Abandon rate',cls:'r'},{h:'Transferred',cls:'r'},{h:'With AI summary',cls:'r'}],gs.map(g=>`<tr class="rc" ${A('chgo',g.g)}><td><span class="dot" style="background:${GCOL[g.g]};margin-right:8px"></span><b>${g.g}</b> <span class="muted xs">${g.types.map(t=>t.channelType).join(', ')}</span></td><td class="r">${fmtN(g.workitems)}</td><td class="r">${pc(g.workitems,tot)}</td><td class="r">${g.abandoned}</td><td class="r">${pc(g.abandoned,g.workitems)}</td><td class="r">${g.transferred}</td><td class="r">${g.joined?`${g.withSum} of ${g.joined} (${pc(g.withSum,g.joined)})`:'<span class="faint">not matched</span>'}</td></tr>`).concat([`<tr style="background:#FBFAF8"><td class="b">All channels</td><td class="r b">${fmtN(tot)}</td><td class="r">100%</td><td class="r b">${ab}</td><td class="r">${pc(ab,tot)}</td><td class="r b">${tr}</td><td class="r">${fmtN(ws)} of ${fmtN(jn)} (${pc(ws,jn)})</td></tr>`])),{cls:'flat',right:'<span class="muted xs">Click a row for that channel</span>'});
   const abs=cs.filter(c=>c.abandoned>0).sort((x,y)=>y.abandoned-x.abandoned);
-  const abCard=card('Where calls and chats were abandoned',hbars(abs.map(c=>({k:c.channelType,v:c.abandoned,color:'#EA6C8B',label:`${esc(c.channelType)} <span class="muted xs">of ${c.workitems}</span>`,tip:`<b>${esc(c.channelType)}</b><br>${c.abandoned} of ${c.workitems} (${pc(c.abandoned,c.workitems)})`})),{fmt:v=>v})+'<div class="xs muted mt">Only channels with at least one abandon are shown.</div>');
+  const abCard=card('Where workitems were abandoned',hbars(abs.map(c=>({k:c.channelType,v:c.abandoned,color:'#EA6C8B',label:`${esc(c.channelType)} <span class="muted xs">of ${c.workitems}</span>`,tip:`<b>${esc(c.channelType)}</b><br>${c.abandoned} of ${c.workitems} (${pc(c.abandoned,c.workitems)})`})),{fmt:v=>v})+'<div class="xs muted mt">Only channels with at least one abandon are shown.</div>');
   const cv=cs.filter(c=>c.joined_workitems>0);
-  const cvCard=card('AI summary coverage by channel type',hbars(cv.map(c=>({k:c.channelType,v:pctOf(c.with_summary,c.joined_workitems),color:covColor(pctOf(c.with_summary,c.joined_workitems)),label:`${esc(c.channelType)} <span class="muted xs">${c.with_summary} of ${c.joined_workitems}</span>`,tip:`<b>${esc(c.channelType)}</b><br>${c.with_summary} of ${c.joined_workitems} matched workitems`})),{max:100,fmt:v=>f1(v,0)+'%'})+'<div class="xs muted mt">Counts every matched workitem, including calls that never connected, so voice looks lower than on the AI Summary page.</div>');
-  return top+`<div class="g g21">${tbl}<div class="g" style="align-content:start">${mix}</div></div><div class="g g3">${voice}${abCard}${cvCard}</div>`+handleByChannel(chans(),true)+trendsBlock();
+  const cvCard=card('AI summary coverage by channel type',hbars(cv.map(c=>({k:c.channelType,v:pctOf(c.with_summary,c.joined_workitems),color:covColor(pctOf(c.with_summary,c.joined_workitems)),label:`${esc(c.channelType)} <span class="muted xs">${c.with_summary} of ${c.joined_workitems}</span>`,tip:`<b>${esc(c.channelType)}</b><br>${c.with_summary} of ${c.joined_workitems} matched workitems`})),{max:100,fmt:v=>f1(v,0)+'%'})+'<div class="xs muted mt">Counts every matched workitem, including ones that never reached an agent, so it reads lower than the AI Summary page.</div>');
+  return ovNote(o)+top+`<div class="g g21">${tbl}<div class="g" style="align-content:start">${mix}</div></div><div class="g g3">${glance}${abCard}${cvCard}</div>`+handleByChannel(chans(),true,o)+trendsBlock();
 }};
 P.livedash=P.overview;
-/* ---------- Handle Time ---------- */
-P.handle={title:'Voice Handle Time',sub:'NCC voice · last 30 days',body(){
-  const k=D.kpis,w=pickList('wrap_by_summary'),st=pickList('stuck_calls'),none=w.find(x=>/no summary/i.test(x.summary_type)),lg=w.find(x=>/long/i.test(x.summary_type));
-  const gap=none&&lg?lg.wrapup_median_sec-none.wrapup_median_sec:30;
-  return `<div class="g g4">${kpi('Average handle time',dur(k.aht_mean_sec_capped),'left-open calls removed')}${kpi('Median handle time',dur(k.aht_median_sec),'all connected calls')}${kpi('Average talk',dur(k.talk_avg_sec),'all connected calls')}${kpi('Average wrap-up',dur(k.acw_avg_sec_capped),'left-open calls removed')}</div>
-  <div class="g g3">${kpi('Average hold',dur(k.hold_avg_sec),'all connected calls')}${kpi('Left open over 1 hour',k.stuck_over_1h,'excluded from handle time',{cls:'bad'})}${kpi('AI summary wait inside wrap-up','about '+Math.round(gap)+' s','long template vs no summary (median)')}</div>
-  ${note('<b>How to read this.</b> Handle time is talk plus hold plus wrap-up, in milliseconds on DATA_WORKITEMS. The mean leaves out calls whose wrap-up ran over an hour, because a few of those lasted days and make the average meaningless. The median includes every connected call, and talk and hold averages do too, so the pieces do not add up exactly to the mean.')}
-  <div class="g g2">${card('Wrap-up by summary type',barChart({labels:w.map(x=>x.summary_type),h:260,w:520,yFmt:v=>Math.round(v)+'s',groups:[{name:'Median',color:'#68BFBF',data:w.map(x=>x.wrapup_median_sec)},{name:'75th percentile',color:'#C9C5BC',data:w.map(x=>x.wrapup_p75_sec)}],tip:(g,i)=>`<b>${esc(w[i].summary_type)}</b><br>${w[i].calls} calls<br>${g?'75th percentile':'Median'}: ${g?w[i].wrapup_p75_sec:w[i].wrapup_median_sec} s`})+legend([{name:'Median',color:'#68BFBF',sq:1},{name:'75th percentile',color:'#C9C5BC',sq:1}])+`<div class="xs muted mt">Calls with wrap-up under 1 hour. The agent waits for the summary before dispositioning, so richer prompts add wrap-up time.</div>`)}
-  ${card('Calls left undispositioned (longest first)',table([{h:'Campaign'},{h:'Disposition'},{h:'Hours open',cls:'r'}],st.map(s=>`<tr><td>${esc(s.campaignName)}</td><td>${esc(s.dispositionName)}</td><td class="r b" style="color:#D4343A">${s.wrap_hours}</td></tr>`)),{cls:'flat'})}</div>`;
+/* ---------- Channel Handle Time ---------- */
+function handleTable(cs,o){
+  if(!cs.some(c=>c.handle_avg_sec_capped!=null||c.talk_avg_sec!=null||c.open_avg_sec!=null))return '';
+  const d=v=>v?dur(v):'<span class="faint">-</span>';
+  const rows=[...cs].sort((a,b)=>(b.handled_capped||b.connected||0)-(a.handled_capped||a.connected||0)).map(c=>`<tr><td><span class="dot" style="background:${GCOL[groupOf(c.channelType)]};margin-right:6px"></span><b>${esc(c.channelType)}</b></td><td class="r">${num(c.handled_capped!=null?c.handled_capped:c.connected)}</td><td class="r">${d(c.handle_avg_sec_capped)}</td><td class="r">${d(c.handle_median_sec)}</td><td class="r">${d(c.handle_p90_sec)}</td><td class="r">${d(c.talk_avg_sec)}</td><td class="r">${d(c.hold_avg_sec)}</td><td class="r">${d(c.wrap_avg_sec)}</td><td class="r">${d(c.open_avg_sec)}</td></tr>`);
+  const all=(o&&o.all)?`<tr style="background:#FBFAF8"><td class="b">All channels (contact center)</td><td class="r b">${num(o.handled_capped)}</td><td class="r b">${d(o.aht_mean_sec_capped)}</td><td class="r b">${d(o.aht_median_sec)}</td><td class="r b">${d(o.aht_p90_sec)}</td><td class="r">${d(o.talk_avg_sec)}</td><td class="r">${d(o.hold_avg_sec)}</td><td class="r">${d(o.wrap_avg_sec)}</td><td class="r muted">-</td></tr>`:'';
+  return card('Handle time by channel, in numbers',table([{h:'Channel'},{h:'Handled',cls:'r'},{h:'Avg handle',cls:'r'},{h:'Median',cls:'r'},{h:'90th percentile',cls:'r'},{h:'Avg talk',cls:'r'},{h:'Avg hold',cls:'r'},{h:'Avg wrap-up',cls:'r'},{h:'Avg time open',cls:'r'}],[all,...rows].filter(Boolean)),{cls:'flat'});
+}
+P.handle={title:'Channel Handle Time',sub:'Every channel and the contact center overall · last 30 days',body(){
+  const o=overall(),cs=chans(),w=pickList('wrap_by_summary'),st=pickList('stuck_calls'),none=w.find(x=>/no summary/i.test(x.summary_type)),lg=w.find(x=>/long/i.test(x.summary_type));
+  const gap=none&&lg?lg.wrapup_median_sec-none.wrapup_median_sec:30,sub=o.all?'all channels':'voice only (snapshot)';
+  return ovNote(o)+`<div class="g g4">${kpi('Contact center handle time',dur(o.aht_mean_sec_capped),'average, '+sub,{info:'Talk plus hold plus wrap-up, averaged over every handled workitem on every channel. Wrap-ups over an hour are left out.'})}${kpi('Median',dur(o.aht_median_sec),'half are quicker')}${kpi('90th percentile',o.aht_p90_sec!=null?dur(o.aht_p90_sec):'-','nine in ten are quicker')}${kpi('Handled workitems',o.handled_capped!=null?fmtN(o.handled_capped):'-','talk time above zero')}</div>
+  <div class="g g4">${kpi('Average talk',dur(o.talk_avg_sec),'time with an agent')}${kpi('Average hold',dur(o.hold_avg_sec),'on hold')}${kpi('Average wrap-up',dur(o.wrap_avg_sec),'after the conversation')}${kpi('Left open over 1 hour',o.stuck_over_1h!=null?o.stuck_over_1h:'-','excluded from handle time',{cls:'bad'})}</div>
+  ${handleByChannel(cs,false,o)}
+  ${handleTable(cs,o)}
+  <div class="g g2">${card('Wrap-up by summary type',barChart({labels:w.map(x=>x.summary_type),h:260,w:520,yFmt:v=>Math.round(v)+'s',groups:[{name:'Median',color:'#68BFBF',data:w.map(x=>x.wrapup_median_sec)},{name:'75th percentile',color:'#C9C5BC',data:w.map(x=>x.wrapup_p75_sec)}],tip:(g,i)=>`<b>${esc(w[i].summary_type)}</b><br>${w[i].calls} workitems<br>${g?'75th percentile':'Median'}: ${g?w[i].wrapup_p75_sec:w[i].wrapup_median_sec} s`})+legend([{name:'Median',color:'#68BFBF',sq:1},{name:'75th percentile',color:'#C9C5BC',sq:1}])+`<div class="xs muted mt">Handled workitems with wrap-up under 1 hour. The agent waits for the AI summary before dispositioning, so richer prompts add about ${Math.round(gap)} seconds to wrap-up.</div>`)}
+  ${card('Workitems left undispositioned (longest first)',table([{h:'Channel'},{h:'Campaign'},{h:'Disposition'},{h:'Hours open',cls:'r'}],st.map(x=>`<tr><td>${x.channelType?esc(x.channelType):'<span class="faint">-</span>'}</td><td>${esc(x.campaignName)}</td><td>${esc(x.dispositionName)}</td><td class="r b" style="color:#D4343A">${x.wrap_hours}</td></tr>`)),{cls:'flat'})}</div>`;
 }};
 /* ---------- Call Outcomes ---------- */
-P.outcomes={title:'Call Outcomes',sub:'NCC voice · last 30 days',body(){
-  const k=D.kpis,codes=pickList('termination_codes'),tot=sum(codes.map(c=>c.workitems));
-  return `<div class="g g4">${kpi('Voice workitems',fmtN(k.workitems),'inbound and outbound')}${kpi('Connected',fmtN(k.connected),f1(pctOf(k.connected,k.workitems))+'% of workitems')}${kpi('Abandoned',fmtN(k.abandoned_calls),f1(pctOf(k.abandoned_calls,k.workitems))+'% of workitems',{cls:'bad'})}${kpi('Transferred',fmtN(k.transferred_calls),'meaning not yet confirmed',{info:'transferred is 0 or 1 on DATA_WORKITEMS. It may include automatic transfers such as the IVR sending a call to an agent.'})}</div>
-  <div class="g g2">${card('From workitem to connected call',funnel([{k:'Voice workitems',v:k.workitems,color:'linear-gradient(90deg,#5B8BBF,#8EB4DA)',note:'all'},{k:'Connected',v:k.connected,color:'linear-gradient(90deg,#68BFBF,#9ED6D6)',note:f1(pctOf(k.connected,k.workitems))+'%'},{k:'Abandoned',v:k.abandoned_calls,color:'linear-gradient(90deg,#EA6C8B,#F2A4B7)',note:f1(pctOf(k.abandoned_calls,k.workitems))+'%'}]))}
-  ${card('How workitems ended (termination reason)',table([{h:'Code'},{h:'Workitems',cls:'r'},{h:'Abandoned',cls:'r'},{h:'Transferred',cls:'r'},{h:'Meaning'}],codes.map(c=>`<tr><td class="mono b">${esc(c.terminationReason)}</td><td class="r">${fmtN(c.workitems)}</td><td class="r">${c.abandoned_workitems}</td><td class="r">${c.transferred_workitems}</td><td class="muted sm">${String(c.terminationReason)==='6'?'Abandoned (every abandoned call has this code)':'Not yet confirmed'}</td></tr>`))+`<div class="xs muted mt">All channels, ${fmtN(tot)} workitems. Abandoned is a number of milliseconds waited, and transferred is 0 or 1.</div>`,{cls:'flat'})}</div>
-  ${note('Transferred calls divided by connected calls would read '+f1(pctOf(k.transferred_calls,k.connected))+'%, which looks too high. It is not yet confirmed what NCC counts as a transfer, so treat the transfer count as unverified.','warn')}`;
+P.outcomes={title:'Workitem Outcomes',sub:'All channels · last 30 days',body(){
+  const o=overall(),codes=pickList('termination_codes'),tot=sum(codes.map(c=>c.workitems)),h=o.handled;
+  const funnelRows=[{k:'Workitems, all channels',v:o.workitems,color:'linear-gradient(90deg,#5B8BBF,#8EB4DA)',note:'all'}];
+  if(h!=null)funnelRows.push({k:'Handled by an agent',v:h,color:'linear-gradient(90deg,#68BFBF,#9ED6D6)',note:f1(pctOf(h,o.workitems))+'%'});
+  funnelRows.push({k:'Abandoned',v:o.abandoned,color:'linear-gradient(90deg,#EA6C8B,#F2A4B7)',note:f1(pctOf(o.abandoned,o.workitems))+'%'});
+  return ovNote(o)+`<div class="g g4">${kpi('Workitems, all channels',fmtN(o.workitems),'every channel')}${kpi('Handled by an agent',h!=null?fmtN(h):'-',h!=null?f1(pctOf(h,o.workitems))+'% of workitems':'run the main query')}${kpi('Abandoned',fmtN(o.abandoned),f1(pctOf(o.abandoned,o.workitems))+'% of workitems',{cls:'bad'})}${kpi('Transferred',fmtN(o.transferred),'meaning not yet confirmed',{info:'transferred is 0 or 1 on DATA_WORKITEMS. It may include automatic transfers such as the IVR sending a call to an agent.'})}</div>
+  <div class="g g2">${card('From workitem to handled',funnel(funnelRows))}
+  ${card('How workitems ended (termination reason)',table([{h:'Code'},{h:'Workitems',cls:'r'},{h:'Abandoned',cls:'r'},{h:'Transferred',cls:'r'},{h:'Meaning'}],codes.map(c=>`<tr><td class="mono b">${esc(c.terminationReason)}</td><td class="r">${fmtN(c.workitems)}</td><td class="r">${c.abandoned_workitems}</td><td class="r">${c.transferred_workitems}</td><td class="muted sm">${String(c.terminationReason)==='6'?'Abandoned (every abandoned workitem has this code)':'Not yet confirmed'}</td></tr>`))+`<div class="xs muted mt">All channels, ${fmtN(tot)} workitems. Abandoned is a number of milliseconds waited, and transferred is 0 or 1.</div>`,{cls:'flat'})}</div>
+  ${h?note('Transferred workitems divided by handled workitems would read '+f1(pctOf(o.transferred,h))+'%. It is not yet confirmed what NCC counts as a transfer, so treat the transfer count as unverified.','warn'):''}`;
 }};
 /* ---------- AI Summary Quality ---------- */
-P.summary={title:'AI Summary',sub:'QA prompt output on connected calls · last 30 days',body(){
+P.summary={title:'AI Summary',sub:'QA prompt output on handled workitems · all channels · last 30 days',body(){
   const t=totals(),cov=[...covs()].sort((a,b)=>b.connected_calls-a.connected_calls),rc=pickList('recent_calls');
-  return `<div class="g g4">${kpi('Coverage',f1(t.pct)+'%',t.ws+' of '+t.conn+' connected calls',{cls:t.pct<80?'bad':''})}${kpi('Long composite',t.lg,'composite score, grade, pillars')}${kpi('Short ISDC',t.sh,'Overall Score X / 16')}${kpi('No summary',t.none,'connected calls',{cls:'bad'})}</div>
+  return `<div class="g g4">${kpi('Coverage',f1(t.pct)+'%',t.ws+' of '+t.conn+' handled workitems',{cls:t.pct<80?'bad':''})}${kpi('Long composite',t.lg,'composite score, grade, pillars')}${kpi('Short ISDC',t.sh,'Overall Score X / 16')}${kpi('No summary',t.none,'handled workitems',{cls:'bad'})}</div>
   <div class="g g21">${card('Coverage by campaign',`<div class="hbw">${hbars(cov.map(c=>({k:c.campaignName,v:pctOf(c.with_summary,c.connected_calls),color:covColor(pctOf(c.with_summary,c.connected_calls)),label:`${esc(c.campaignName)} <span class="muted xs">${c.with_summary} of ${c.connected_calls}</span>`,act:'camp',arg:c.campaignName,tip:`<b>${esc(c.campaignName)}</b><br>${c.with_summary} of ${c.connected_calls}<br>Long ${c.long_composite} · Short ${c.short_isdc}`})),{max:100,fmt:v=>f1(v,0)+'%'})}</div><div class="xs muted mt">Click a campaign for its template split. Which prompt a campaign uses differs, which explains most gaps.</div>`)}
-  ${card('Summary layouts',donut([{k:'Long composite',v:t.lg,color:'#8E7CC3'},{k:'Short ISDC',v:t.sh,color:'#5B8BBF'},{k:'Other layout',v:t.ot,color:'#68BFBF'},{k:'No summary',v:t.none,color:'#C9C5BC'}],{size:190,center:t.ws,sub:'with a summary',fmt:v=>v+' calls'})+legend([{name:'Long composite',color:'#8E7CC3'},{name:'Short ISDC',color:'#5B8BBF'},{name:'Other',color:'#68BFBF'},{name:'None',color:'#C9C5BC'}]))}</div>
-  ${card('Recent connected calls',table([{h:'Workitem'},{h:'Direction'},{h:'Talk',cls:'r'},{h:'Wrap-up',cls:'r'},{h:'Summary'},{h:'Customer sentiment'}],rc.map(c=>{const ty=/short/i.test(c.summary_type)?'short':/long|composite/i.test(c.summary_type)?'long':/none/i.test(c.summary_type)?'none':'other';return `<tr><td class="mono">${esc(c.workitem)}…</td><td>${c.channelType==='InboundCall'?'Inbound':'Outbound'}</td><td class="r">${dur(c.talk_sec)}</td><td class="r">${dur(c.wrapup_sec)}</td><td>${chip(TPLN[ty],ty==='short'?'blue':ty==='long'?'violet':ty==='none'?'gray':'green')}</td><td>${c.customer_sentiment?esc(c.customer_sentiment):'<span class="faint">not parsed</span>'}</td></tr>`}))+`<div class="xs muted" style="padding:10px 12px">Sentiment is a text phrase pulled from the summary with a pattern. Some layouts do not contain it, so those rows show not parsed.</div>`,{cls:'flat'})}`;
+  ${card('Summary layouts',donut([{k:'Long composite',v:t.lg,color:'#8E7CC3'},{k:'Short ISDC',v:t.sh,color:'#5B8BBF'},{k:'Other layout',v:t.ot,color:'#68BFBF'},{k:'No summary',v:t.none,color:'#C9C5BC'}],{size:190,center:t.ws,sub:'with a summary',fmt:v=>v+' workitems'})+legend([{name:'Long composite',color:'#8E7CC3'},{name:'Short ISDC',color:'#5B8BBF'},{name:'Other',color:'#68BFBF'},{name:'None',color:'#C9C5BC'}]))}</div>
+  ${card('Recent handled workitems',table([{h:'Workitem'},{h:'Channel'},{h:'With agent',cls:'r'},{h:'Wrap-up',cls:'r'},{h:'Summary'},{h:'Customer sentiment'}],rc.map(c=>{const ty=/short/i.test(c.summary_type)?'short':/long|composite/i.test(c.summary_type)?'long':/none/i.test(c.summary_type)?'none':'other';return `<tr><td class="mono">${esc(c.workitem)}…</td><td>${esc(c.channelType)}</td><td class="r">${dur(c.talk_sec)}</td><td class="r">${dur(c.wrapup_sec)}</td><td>${chip(TPLN[ty],ty==='short'?'blue':ty==='long'?'violet':ty==='none'?'gray':'green')}</td><td>${c.customer_sentiment?esc(c.customer_sentiment):'<span class="faint">not parsed</span>'}</td></tr>`}))+`<div class="xs muted" style="padding:10px 12px">Sentiment is a text phrase pulled from the summary with a pattern. Some layouts do not contain it, so those rows show not parsed.</div>`,{cls:'flat'})}`;
 }};
 ACT.camp=n=>{const c=covs().find(x=>x.campaignName===n);if(!c)return;const p=pctOf(c.with_summary,c.connected_calls);
-  drawer(c.campaignName,`<div class="g g3" style="grid-template-columns:repeat(3,1fr)"><div class="tile"><h5>Connected calls</h5><div class="v">${c.connected_calls}</div></div><div class="tile"><h5>With summary</h5><div class="v">${c.with_summary}</div></div><div class="tile ${p>=80?'good':p>=50?'warn':'bad'}"><h5>Coverage</h5><div class="v">${f1(p,0)}%</div></div></div>${card('Which layout',`<div class="lst">${[['Long composite',c.long_composite],['Short ISDC',c.short_isdc],['Other layout',c.with_summary-c.long_composite-c.short_isdc],['No summary',c.connected_calls-c.with_summary]].map(r=>`<div class="li"><span class="sp1">${r[0]}</span><b>${r[1]}</b></div>`).join('')}</div>`)}${note('Each campaign has an AI prompt assigned, but not every campaign uses the composite scoring prompt.')}`,{sub:'Last 30 days, connected voice calls'})};
+  drawer(c.campaignName,`<div class="g g3" style="grid-template-columns:repeat(3,1fr)"><div class="tile"><h5>Handled workitems</h5><div class="v">${c.connected_calls}</div></div><div class="tile"><h5>With summary</h5><div class="v">${c.with_summary}</div></div><div class="tile ${p>=80?'good':p>=50?'warn':'bad'}"><h5>Coverage</h5><div class="v">${f1(p,0)}%</div></div></div>${card('Which layout',`<div class="lst">${[['Long composite',c.long_composite],['Short ISDC',c.short_isdc],['Other layout',c.with_summary-c.long_composite-c.short_isdc],['No summary',c.connected_calls-c.with_summary]].map(r=>`<div class="li"><span class="sp1">${r[0]}</span><b>${r[1]}</b></div>`).join('')}</div>`)}${note('Each campaign has an AI prompt assigned, but not every campaign uses the composite scoring prompt.')}`,{sub:'Last 30 days, handled workitems, all channels'})};
 /* ---------- import helper ---------- */
 const QSQL={
 channels:`SELECT
@@ -773,6 +794,7 @@ channels:`SELECT
   COUNTIF(d.abandoned > 0) AS abandoned,
   COUNTIF(d.transferred > 0) AS transferred,
   COUNTIF(d.talkTime > 0) AS connected,
+  COUNTIF(d.talkTime > 0 AND d.wrapupTime <= 3600000) AS handled_capped,
   ROUND(
     AVG(IF(d.talkTime > 0 AND d.wrapupTime <= 3600000, d.talkTime + d.holdTime + d.wrapupTime, NULL)) / 1000,
     1
@@ -861,6 +883,29 @@ SELECT
         WHERE _PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
           AND channelType IN ('InboundCall', 'OutboundCall')
       ) AS kpis,
+      (
+        SELECT AS STRUCT
+          COUNT(*) AS workitems,
+          COUNTIF(talkTime > 0) AS handled,
+          COUNTIF(talkTime > 0 AND wrapupTime <= 3600000) AS handled_capped,
+          COUNTIF(abandoned > 0) AS abandoned,
+          COUNTIF(transferred > 0) AS transferred,
+          ROUND(AVG(IF(talkTime > 0 AND wrapupTime <= 3600000, talkTime, NULL)) / 1000, 1) AS talk_avg_sec,
+          ROUND(AVG(IF(talkTime > 0 AND wrapupTime <= 3600000, holdTime, NULL)) / 1000, 1) AS hold_avg_sec,
+          ROUND(AVG(IF(talkTime > 0 AND wrapupTime <= 3600000, wrapupTime, NULL)) / 1000, 1) AS wrap_avg_sec,
+          ROUND(AVG(IF(talkTime > 0 AND wrapupTime <= 3600000, talkTime + holdTime + wrapupTime, NULL)) / 1000, 1) AS aht_mean_sec_capped,
+          ROUND(
+            APPROX_QUANTILES(IF(talkTime > 0 AND wrapupTime <= 3600000, talkTime + holdTime + wrapupTime, NULL), 100 IGNORE NULLS)[SAFE_OFFSET(50)] / 1000,
+            1
+          ) AS aht_median_sec,
+          ROUND(
+            APPROX_QUANTILES(IF(talkTime > 0 AND wrapupTime <= 3600000, talkTime + holdTime + wrapupTime, NULL), 100 IGNORE NULLS)[SAFE_OFFSET(90)] / 1000,
+            1
+          ) AS aht_p90_sec,
+          COUNTIF(talkTime > 0 AND wrapupTime > 3600000) AS stuck_over_1h
+        FROM \`thrio-prod-4258998.4258998.DATA_WORKITEMS\`
+        WHERE _PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+      ) AS overall,
       ARRAY(
         SELECT AS STRUCT
           d.campaignName,
@@ -873,7 +918,6 @@ SELECT
           ON r.callId = d.id
         WHERE d._PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
           AND r._PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
-          AND d.channelType IN ('InboundCall', 'OutboundCall')
           AND d.talkTime > 0
         GROUP BY d.campaignName
         ORDER BY connected_calls DESC
@@ -895,7 +939,6 @@ SELECT
           ON r.callId = d.id
         WHERE d._PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
           AND r._PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
-          AND d.channelType IN ('InboundCall', 'OutboundCall')
           AND d.talkTime > 0
           AND d.wrapupTime <= 3600000
         GROUP BY summary_type
@@ -903,12 +946,12 @@ SELECT
       ) AS wrap_by_summary,
       ARRAY(
         SELECT AS STRUCT
+          channelType,
           campaignName,
           dispositionName,
           ROUND(wrapupTime / 3600000, 1) AS wrap_hours
         FROM \`thrio-prod-4258998.4258998.DATA_WORKITEMS\`
         WHERE _PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
-          AND channelType IN ('InboundCall', 'OutboundCall')
           AND talkTime > 0
           AND wrapupTime > 3600000
         ORDER BY wrapupTime DESC
@@ -943,7 +986,6 @@ SELECT
           ON r.callId = d.id
         WHERE d._PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)
           AND r._PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)
-          AND d.channelType IN ('InboundCall', 'OutboundCall')
           AND d.talkTime > 0
         ORDER BY d.createdAt DESC
         LIMIT 20
@@ -955,6 +997,7 @@ SELECT
           COUNTIF(d.abandoned > 0) AS abandoned,
           COUNTIF(d.transferred > 0) AS transferred,
           COUNTIF(d.talkTime > 0) AS connected,
+          COUNTIF(d.talkTime > 0 AND d.wrapupTime <= 3600000) AS handled_capped,
           ROUND(
             AVG(IF(d.talkTime > 0 AND d.wrapupTime <= 3600000, d.talkTime + d.holdTime + d.wrapupTime, NULL)) / 1000,
             1
@@ -1005,7 +1048,6 @@ SELECT
           COUNT(*) AS workitems
         FROM \`thrio-prod-4258998.4258998.DATA_WORKITEMS\`
         WHERE _PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
-          AND channelType IN ('InboundCall', 'OutboundCall')
         GROUP BY dow, hour
         ORDER BY dow, hour
         )
@@ -1163,28 +1205,28 @@ ACT.impai=()=>{const j=cellJson(($('#imp_ai')||{}).value||'');if(!j||!j.ai_evals
 ACT.impaiclear=()=>{try{localStorage.removeItem('ncc_import_ai')}catch(e){}D=Object.assign({},D,{ai_evals:SNAP.ai_evals,imported_ai:false});render(true);toast('Back to the 2 examples')};
 
 /* ---------- handle time by channel ---------- */
-const VOICEISH=t=>/Call$/.test(String(t));
-function handleByChannel(cs,compact){
-  const rows=cs.map(c=>{
-    if(VOICEISH(c.channelType)){
-      if(c.talk_avg_sec==null&&c.handle_avg_sec_capped==null)return null;
-      const talk=+c.talk_avg_sec||0,hold=+c.hold_avg_sec||0,wrap=+c.wrap_avg_sec||0,tot=(talk+hold+wrap)||+c.handle_avg_sec_capped||0;
-      return tot>0?{c,kind:'call',segs:(talk+hold+wrap)?[['Talk',talk,'#5B8BBF'],['Hold',hold,'#E0A63A'],['Wrap-up',wrap,'#68BFBF']]:[['Handle',tot,'#5B8BBF']],tot,n:c.connected}:null;
-    }
-    if(c.open_avg_sec==null||!(c.open_avg_sec>0))return null;
-    return {c,kind:'open',segs:[['Open time',+c.open_avg_sec,'#8E7CC3']],tot:+c.open_avg_sec,n:c.workitems};
-  }).filter(Boolean).sort((a,b)=>b.tot-a.tot);
-  if(!rows.length)return card('Handle time by channel',`<div class="empty" style="padding:22px">Handle time by channel needs the channels numbers. Open <b>Data Sources</b>, copy the main query, run it in BigQuery, and paste the result.<div class="mt"><button class="btn pri sm" ${A('go','sources')}>Go to Data Sources</button></div></div>`);
-  const line=(r,mx)=>{const c=r.c;return `<div style="display:grid;grid-template-columns:190px 1fr 150px;gap:12px;align-items:center;margin:10px 0"><div><div class="b sm">${esc(c.channelType)}</div>${r.kind==='call'&&c.handle_median_sec?`<div class="muted xs">median ${dur(c.handle_median_sec)} · 90th ${dur(c.handle_p90_sec||0)}</div>`:`<div class="muted xs">${r.kind==='call'?'talk + hold + wrap-up':'time open'}</div>`}</div><div style="display:flex;height:22px;background:#EDEBE5;border-radius:6px;overflow:hidden" ${TIP('<b>'+esc(c.channelType)+'</b><br>'+r.segs.map(x=>x[0]+': '+dur(x[1])).join('<br>')+(c.handle_median_sec&&r.kind==='call'?'<br>Median: '+dur(c.handle_median_sec):'')+(c.handle_p90_sec&&r.kind==='call'?'<br>90th percentile: '+dur(c.handle_p90_sec):'')+'<br>'+fmtN(r.n)+(r.kind==='call'?' connected calls':' workitems'))}>${r.segs.map(x=>`<div style="width:${x[1]/mx*100}%;background:${x[2]};min-width:${x[1]>0?2:0}px"></div>`).join('')}</div><div class="r"><b style="font-size:16px;font-weight:600">${dur(r.tot)}</b><div class="muted xs">${fmtN(r.n)} ${r.kind==='call'?'calls':'workitems'}</div></div></div>`};
-  const part=(k,title,sub,lg)=>{const rr=rows.filter(r=>r.kind===k);if(!rr.length)return '';const mx=Math.max(...rr.map(r=>r.tot));return `<div style="margin:6px 0 14px"><div class="row" style="gap:10px;align-items:baseline"><b>${title}</b><span class="muted xs">${sub}</span></div>${rr.map(r=>line(r,mx)).join('')}${lg}</div>`};
-  const body=part('call','Calls: voice and dialer','talk + hold + wrap-up, connected calls',legend([{name:'Talk',color:'#5B8BBF',sq:1},{name:'Hold',color:'#E0A63A',sq:1},{name:'Wrap-up',color:'#68BFBF',sq:1}]))+part('open','Chat, SMS and email','time the workitem stayed open, not agent effort',legend([{name:'Time open',color:'#8E7CC3',sq:1}]));
-  return card('Handle time by channel',body+(compact?'':`<div class="note info mt">${ico('info','sm')}<div><b>How to read this.</b> For calls, handle time is talk plus hold plus wrap-up on connected calls, with wrap-ups over an hour left out. For chat, SMS and email the data only tells us how long the workitem stayed open, which includes the wait between messages. Those bars use their own scale and are not handle time, so do not compare them with calls. The AI summary wait is inside wrap-up for campaigns that use it.</div></div>`),{info:'Averages over the last 30 days. Needs the channels numbers from the main query.'});
+function handleByChannel(cs,compact,o){
+  const mk=c=>{
+    const talk=+c.talk_avg_sec||0,hold=+c.hold_avg_sec||0,wrap=+c.wrap_avg_sec||0,s3=talk+hold+wrap,tot=(+c.handle_avg_sec_capped)||s3;
+    if((c.talk_avg_sec!=null||c.handle_avg_sec_capped!=null)&&tot>0)return {c,kind:'handle',segs:s3?[['Talk',talk,'#5B8BBF'],['Hold',hold,'#E0A63A'],['Wrap-up',wrap,'#68BFBF']]:[['Handle',tot,'#5B8BBF']],tot,n:c.handled_capped||c.connected||0};
+    if(c.open_avg_sec>0)return {c,kind:'open',segs:[['Time open',+c.open_avg_sec,'#8E7CC3']],tot:+c.open_avg_sec,n:c.workitems};
+    return null;
+  };
+  const rows=cs.map(mk).filter(Boolean).sort((a,b)=>b.tot-a.tot);
+  const ov=(o&&o.all&&o.aht_mean_sec_capped>0)?{c:{channelType:'All channels',handle_median_sec:o.aht_median_sec,handle_p90_sec:o.aht_p90_sec},kind:'handle',overall:true,segs:[['Talk',+o.talk_avg_sec||0,'#5B8BBF'],['Hold',+o.hold_avg_sec||0,'#E0A63A'],['Wrap-up',+o.wrap_avg_sec||0,'#68BFBF']],tot:+o.aht_mean_sec_capped,n:o.handled_capped||o.handled||0}:null;
+  if(!rows.length&&!ov)return card('Handle time by channel',`<div class="empty" style="padding:22px">Handle time by channel needs the channels numbers. Open <b>Data Sources</b>, copy the main query, run it in BigQuery, and paste the result.<div class="mt"><button class="btn pri sm" ${A('go','sources')}>Go to Data Sources</button></div></div>`);
+  const line=(r,mx)=>{const c=r.c;const sub=r.overall?'contact center overall':(r.kind==='handle'&&c.handle_median_sec?`median ${dur(c.handle_median_sec)} · 90th ${dur(c.handle_p90_sec||0)}`:(r.kind==='handle'?'talk + hold + wrap-up':'time open'));
+    return `<div style="display:grid;grid-template-columns:190px 1fr 150px;gap:12px;align-items:center;margin:6px 0;padding:6px 8px;border-radius:8px;${r.overall?'background:#F4F1EA':''}"><div><div class="b sm">${esc(c.channelType)}</div><div class="muted xs">${sub}</div></div><div style="display:flex;height:22px;background:#EDEBE5;border-radius:6px;overflow:hidden" ${TIP('<b>'+esc(c.channelType)+'</b><br>'+r.segs.map(x=>x[0]+': '+dur(x[1])).join('<br>')+(c.handle_median_sec&&r.kind==='handle'?'<br>Median: '+dur(c.handle_median_sec):'')+(c.handle_p90_sec&&r.kind==='handle'?'<br>90th percentile: '+dur(c.handle_p90_sec):'')+'<br>'+fmtN(r.n)+(r.kind==='handle'?' handled workitems':' workitems'))}>${r.segs.map(x=>`<div style="width:${x[1]/mx*100}%;background:${x[2]};min-width:${x[1]>0?2:0}px"></div>`).join('')}</div><div class="r"><b style="font-size:16px;font-weight:600">${dur(r.tot)}</b><div class="muted xs">${fmtN(r.n)} ${r.kind==='handle'?'handled':'workitems'}</div></div></div>`;};
+  const part=(list,title,sub,lg)=>{if(!list.length)return '';const mx=Math.max(...list.map(r=>r.tot));return `<div style="margin:6px 0 14px"><div class="row" style="gap:10px;align-items:baseline"><b>${title}</b><span class="muted xs">${sub}</span></div>${list.map(r=>line(r,mx)).join('')}${lg}</div>`;};
+  const hRows=(ov?[ov]:[]).concat(rows.filter(r=>r.kind==='handle'));
+  const body=part(hRows,'Handle time','talk + hold + wrap-up, the same for every channel',legend([{name:'Talk',color:'#5B8BBF',sq:1},{name:'Hold',color:'#E0A63A',sq:1},{name:'Wrap-up',color:'#68BFBF',sq:1}]))+part(rows.filter(r=>r.kind==='open'),'No handle time recorded','only the time the workitem stayed open is available, on its own scale',legend([{name:'Time open',color:'#8E7CC3',sq:1}]));
+  return card('Handle time by channel',body+(compact?'':`<div class="note info mt">${ico('info','sm')}<div><b>How to read this.</b> Every channel is measured the same way: talk plus hold plus wrap-up on workitems an agent handled, with wrap-ups over an hour left out. On chat, SMS and email, talk time is the time an agent was connected to the conversation, so it can include waiting between messages. A channel with no talk time recorded falls back to time open and sits in its own group. The contact center row averages every handled workitem on every channel, so a busy channel counts for more.</div></div>`),{info:'Averages over the last 30 days. Needs the channels and overall numbers from the main query.'});
 }
 /* ---------- Channels ---------- */
 S.pg.ch=S.pg.ch||{tab:'All'};
 ACT.chtab=v=>{S.pg.ch.tab=v;render(true)};
 ACT.chgo=g=>{S.pg.ch={tab:g};go('channels');if(CUR&&CUR.name==='channels')render(true)};
-const GNOTE={Voice:'Handle time and wrap-up for voice are on the Voice Handle Time page.',Dialer:'Predictive and progressive dialer calls, plus predictive SMS campaigns.',Chat:'Chat workitems stay open between messages, so open time is not comparable to a phone call.',SMS:'SMS workitems did not match REPORTS_WORKITEMS in the data we pulled, so AI summary coverage is unknown here.',Email:'None of the email workitems has an AI summary yet.',Survey:'Survey workitems are counted on their own. What they record is not yet confirmed.',Other:'Channel types not mapped to a group.'};
+const GNOTE={Voice:'Handle time for every channel is on the Channel Handle Time page.',Dialer:'Predictive and progressive dialer calls, plus predictive SMS campaigns.',Chat:'Chat workitems stay open between messages, so open time is not comparable to a phone call.',SMS:'SMS workitems did not match REPORTS_WORKITEMS in the data we pulled, so AI summary coverage is unknown here.',Email:'None of the email workitems has an AI summary yet.',Survey:'Survey workitems are counted on their own. What they record is not yet confirmed.',Other:'Channel types not mapped to a group.'};
 P.channels={title:'Channels',sub:'Voice, Dialer, Chat, SMS, Email and Survey · last 30 days',body(){
   const tab=S.pg.ch.tab,gs=groups(),all=chans(),cs=tab==='All'?all:all.filter(c=>groupOf(c.channelType)===tab),g=tab==='All'?null:gs.find(x=>x.g===tab);
   const w=cs.reduce((a,c)=>a+(c.workitems||0),0),ab=cs.reduce((a,c)=>a+(c.abandoned||0),0),tr=cs.reduce((a,c)=>a+(c.transferred||0),0),jn=cs.reduce((a,c)=>a+(c.joined_workitems||0),0),ws=cs.reduce((a,c)=>a+(c.with_summary||0),0);
@@ -1197,7 +1239,7 @@ P.channels={title:'Channels',sub:'Voice, Dialer, Chat, SMS, Email and Survey · 
   <div class="g g4">${kpi(tab==='All'?'All channels':tab,fmtN(w),'workitems')}${kpi('Abandoned',fmtN(ab),pc(ab,w)+' of workitems',{cls:ab?'bad':''})}${kpi('Transferred',fmtN(tr),'meaning not yet confirmed')}${kpi('With an AI summary',jn?pc(ws,jn):'-',jn?ws+' of '+jn+' matched':'not matched to REPORTS_WORKITEMS')}</div>
   ${tab==='All'?'':note(GNOTE[tab]||'')}
   ${tab==='All'?`<div class="g g2">${card('Workitems by channel type',hbars(all.map(c=>({k:c.channelType,v:c.workitems,color:GCOL[groupOf(c.channelType)],label:`${esc(c.channelType)} <span class="muted xs">${groupOf(c.channelType)}</span>`,tip:`<b>${esc(c.channelType)}</b><br>${fmtN(c.workitems)} workitems`})),{fmt:fmtN}))}${card('Abandon rate by channel type',hbars(all.filter(c=>c.workitems>=5).map(c=>({k:c.channelType,v:pctOf(c.abandoned,c.workitems),color:c.abandoned?'#EA6C8B':'#68BFBF',label:`${esc(c.channelType)} <span class="muted xs">${c.abandoned} of ${c.workitems}</span>`})),{max:20,fmt:v=>f1(v)+'%'})+'<div class="xs muted mt">Channel types with fewer than 5 workitems are left out.</div>')}</div>`:''}
-  ${handleByChannel(cs,false)}
+  ${handleByChannel(cs,false,tab==='All'?overall():null)}
   ${card(tab==='All'?'Every channel type':tab+' channel types',table(cols,cs.map(row)),{cls:'flat'})}
   ${enriched?'':importCard('channels','Connected calls, handle time, open time and message counts for each channel are not loaded yet. Run this query and paste the results to add them.')}`;
 }};
@@ -1272,14 +1314,14 @@ ACT.agentd=v=>{const[n,l]=String(v).split('|'),x=agentsList().find(y=>y.agent_na
 const CHG_COL=GCOL;
 /* ---------- Data Sources ---------- */
 P.sources={title:'Data Sources',sub:'Where every number comes from, and what is not here',body(){
-  const rows=[['Workitems by channel','DATA_WORKITEMS','COUNT(*) grouped by channelType (11 types seen)'],['Channel groups','n/a','Voice = InboundCall, OutboundCall. Dialer = PredictiveCall, ProgressiveCall, PredictiveSMS. SMS = InboundSMS, OutboundSMS. Chat, Email (Email, OutboundEmail) and Survey stand alone'],['Abandoned','DATA_WORKITEMS','COUNTIF(abandoned > 0). abandoned is milliseconds waited'],['Transferred','DATA_WORKITEMS','COUNTIF(transferred > 0). Meaning not yet confirmed'],['Connected calls','DATA_WORKITEMS','COUNTIF(talkTime > 0)'],['Average handle time (voice)','DATA_WORKITEMS','AVG(talkTime + holdTime + wrapupTime), connected calls, wrapupTime of 1 hour or less'],['Median handle time','DATA_WORKITEMS','Median of talkTime + holdTime + wrapupTime, all connected calls'],['AI summary','REPORTS_WORKITEMS','object column, JSON path $.summary, joined on REPORTS_WORKITEMS.callId = DATA_WORKITEMS.id'],['Summary layout','REPORTS_WORKITEMS','Text match on the summary: Overall Score means short, composite means long'],['Agent','REPORTS_WORKITEMS','object path $.agentUsername, shown as first and last name'],['Customer sentiment','REPORTS_WORKITEMS','Text between the Customer label and the next break in the summary'],['AI score card (composite, grade, pillars, coaching)','REPORTS_WORKITEMS','Read from the summary HTML: composite score, letter grade, pillar scores out of 4, sentiment, reason, disposition, coaching titles'],['Daily volume, busiest hours, dispositions','DATA_WORKITEMS','COUNT(*) by createdAt day and hour (Arizona time) and by dispositionName']];
-  const hidden=[['Service level, queue wait','Needs a threshold and queue data that are not in these tables yet.'],['Live conversations and alerts','BigQuery only has a call after it is dispositioned.'],['CSAT, NPS and QA scores','No survey or scorecard tables pulled yet.'],['SMS summaries and agents','SMS workitems did not match REPORTS_WORKITEMS on callId, so they are missing from agent and summary numbers.'],['Forecast, staffing, adherence','Come from WFM, not these tables.'],['Handle time for chat, SMS and email','Open time is not comparable to a phone call. Shown as open time once the channels query is loaded.']];
+  const rows=[['Workitems by channel','DATA_WORKITEMS','COUNT(*) grouped by channelType (11 types seen)'],['Channel groups','n/a','Voice = InboundCall, OutboundCall. Dialer = PredictiveCall, ProgressiveCall, PredictiveSMS. SMS = InboundSMS, OutboundSMS. Chat, Email (Email, OutboundEmail) and Survey stand alone'],['Abandoned','DATA_WORKITEMS','COUNTIF(abandoned > 0). abandoned is milliseconds waited'],['Transferred','DATA_WORKITEMS','COUNTIF(transferred > 0). Meaning not yet confirmed'],['Handled workitems','DATA_WORKITEMS','COUNTIF(talkTime > 0). Time connected to an agent, on any channel'],['Handle time, each channel and overall','DATA_WORKITEMS','AVG(talkTime + holdTime + wrapupTime) for handled workitems with wrapupTime of 1 hour or less. The same formula for every channel. The overall row averages all of them'],['Median and 90th percentile','DATA_WORKITEMS','APPROX_QUANTILES of the same handle time, for each channel and overall'],['AI summary','REPORTS_WORKITEMS','object column, JSON path $.summary, joined on REPORTS_WORKITEMS.callId = DATA_WORKITEMS.id'],['Summary layout','REPORTS_WORKITEMS','Text match on the summary: Overall Score means short, composite means long'],['Agent','REPORTS_WORKITEMS','object path $.agentUsername, shown as first and last name'],['Customer sentiment','REPORTS_WORKITEMS','Text between the Customer label and the next break in the summary'],['AI score card (composite, grade, pillars, coaching)','REPORTS_WORKITEMS','Read from the summary HTML: composite score, letter grade, pillar scores out of 4, sentiment, reason, disposition, coaching titles'],['Daily volume, busiest hours, dispositions','DATA_WORKITEMS','COUNT(*) by createdAt day and hour (Arizona time) and by dispositionName']];
+  const hidden=[['Service level, queue wait','Needs a threshold and queue data that are not in these tables yet.'],['Live conversations and alerts','BigQuery only has a call after it is dispositioned.'],['CSAT, NPS and QA scores','No survey or scorecard tables pulled yet.'],['SMS summaries and agents','SMS workitems did not match REPORTS_WORKITEMS on callId, so they are missing from agent and summary numbers.'],['Forecast, staffing, adherence','Come from WFM, not these tables.'],['Handle time when talk time is empty','A channel with no talk time recorded falls back to time open (workitemTime), shown on its own scale.']];
   return pasteAllCard()+aiPasteCard()+card('How each number is calculated',table([{h:'Number'},{h:'Table'},{h:'How'}],rows.map(r=>`<tr><td class="b">${r[0]}</td><td class="mono">${r[1]}</td><td class="muted sm">${r[2]}</td></tr>`)),{cls:'flat'})
   +`<div class="g g2">${card('Refresh status',`<dl class="kv"><dt>Source</dt><dd>${LIVE?chip(srcWord(),'green'):PASTED?chip('Pasted from BigQuery','green'):chip('Snapshot','amber')}</dd><dt>As of</dt><dd>${when()}</dd><dt>Window</dt><dd>Last ${D.window_days||30} days</dd><dt>Project</dt><dd class="mono">thrio-prod-4258998</dd><dt>Dataset</dt><dd class="mono">4258998</dd><dt>Refresh</dt><dd>${LIVE?(D.source==='api'?'Every hour by GitHub Action (NCC API)':'Every 30 minutes by GitHub Action (BigQuery)'):PASTED?'By hand: paste a fresh result when you want new numbers':'Manual until the scheduled job can read BigQuery'}</dd><dt>Pasted data</dt><dd>${[D.imported_channels?'channels':'',D.imported_agents?'agents':'',D.imported_ai?'AI evaluations':''].filter(Boolean).join(', ')||'none'}</dd></dl>${(D.errors&&D.errors.length)?note('Some queries failed on the last run and are showing snapshot values: '+esc(D.errors.join('; ')),'warn'):''}`)}
   ${card('Not on this dashboard on purpose',`<div class="lst">${hidden.map(h=>`<div class="li"><div class="sp1"><div class="b">${h[0]}</div><div class="muted xs">${h[1]}</div></div></div>`).join('')}</div>`)}</div>`;
 }};
 /* ---------- shell ---------- */
-const NAVN=[{t:'Dashboards',icon:'gauge',items:[['overview','Overview'],['channels','Channels'],['agents','Agents'],['ai','QA / AI Score Cards'],['handle','Voice Handle Time'],['outcomes','Call Outcomes'],['summary','AI Summary']]},{t:'Data',icon:'db',items:[['sources','Data Sources']]}];
+const NAVN=[{t:'Dashboards',icon:'gauge',items:[['overview','Overview'],['channels','Channels'],['agents','Agents'],['ai','QA / AI Score Cards'],['handle','Channel Handle Time'],['outcomes','Outcomes'],['summary','AI Summary']]},{t:'Data',icon:'db',items:[['sources','Data Sources']]}];
 function shell(){
   $('#app').innerHTML=`<nav class="rail" aria-label="Primary"><svg class="logo" viewBox="0 0 32 32" aria-label="Nextiva"><path d="M7 6c5 0 6.5 4 9 8 2.5 4 4 8 9 8M25 6c-5 0-6.5 4-9 8-2.5 4-4 8-9 8" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round"/></svg><a class="on" role="button" aria-label="Analytics">${ico('chart')}<span>Analytics</span></a></nav>
   <div class="right"><header class="top"><h1 class="serif" style="font-size:19px;margin:0">NCC Contact Center</h1><span class="chip c-gray" id="srcchip"></span><span class="sp"></span><button class="btn sm" ${A('refresh')}>${ico('refresh','sm')} Refresh</button><span class="avatar">JM</span></header>

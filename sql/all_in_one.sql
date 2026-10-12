@@ -28,6 +28,29 @@ SELECT
         WHERE _PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
           AND channelType IN ('InboundCall', 'OutboundCall')
       ) AS kpis,
+      (
+        SELECT AS STRUCT
+          COUNT(*) AS workitems,
+          COUNTIF(talkTime > 0) AS handled,
+          COUNTIF(talkTime > 0 AND wrapupTime <= 3600000) AS handled_capped,
+          COUNTIF(abandoned > 0) AS abandoned,
+          COUNTIF(transferred > 0) AS transferred,
+          ROUND(AVG(IF(talkTime > 0 AND wrapupTime <= 3600000, talkTime, NULL)) / 1000, 1) AS talk_avg_sec,
+          ROUND(AVG(IF(talkTime > 0 AND wrapupTime <= 3600000, holdTime, NULL)) / 1000, 1) AS hold_avg_sec,
+          ROUND(AVG(IF(talkTime > 0 AND wrapupTime <= 3600000, wrapupTime, NULL)) / 1000, 1) AS wrap_avg_sec,
+          ROUND(AVG(IF(talkTime > 0 AND wrapupTime <= 3600000, talkTime + holdTime + wrapupTime, NULL)) / 1000, 1) AS aht_mean_sec_capped,
+          ROUND(
+            APPROX_QUANTILES(IF(talkTime > 0 AND wrapupTime <= 3600000, talkTime + holdTime + wrapupTime, NULL), 100 IGNORE NULLS)[SAFE_OFFSET(50)] / 1000,
+            1
+          ) AS aht_median_sec,
+          ROUND(
+            APPROX_QUANTILES(IF(talkTime > 0 AND wrapupTime <= 3600000, talkTime + holdTime + wrapupTime, NULL), 100 IGNORE NULLS)[SAFE_OFFSET(90)] / 1000,
+            1
+          ) AS aht_p90_sec,
+          COUNTIF(talkTime > 0 AND wrapupTime > 3600000) AS stuck_over_1h
+        FROM `thrio-prod-4258998.4258998.DATA_WORKITEMS`
+        WHERE _PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+      ) AS overall,
       ARRAY(
         SELECT AS STRUCT
           d.campaignName,
@@ -40,7 +63,6 @@ SELECT
           ON r.callId = d.id
         WHERE d._PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
           AND r._PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
-          AND d.channelType IN ('InboundCall', 'OutboundCall')
           AND d.talkTime > 0
         GROUP BY d.campaignName
         ORDER BY connected_calls DESC
@@ -62,7 +84,6 @@ SELECT
           ON r.callId = d.id
         WHERE d._PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
           AND r._PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
-          AND d.channelType IN ('InboundCall', 'OutboundCall')
           AND d.talkTime > 0
           AND d.wrapupTime <= 3600000
         GROUP BY summary_type
@@ -70,12 +91,12 @@ SELECT
       ) AS wrap_by_summary,
       ARRAY(
         SELECT AS STRUCT
+          channelType,
           campaignName,
           dispositionName,
           ROUND(wrapupTime / 3600000, 1) AS wrap_hours
         FROM `thrio-prod-4258998.4258998.DATA_WORKITEMS`
         WHERE _PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
-          AND channelType IN ('InboundCall', 'OutboundCall')
           AND talkTime > 0
           AND wrapupTime > 3600000
         ORDER BY wrapupTime DESC
@@ -110,7 +131,6 @@ SELECT
           ON r.callId = d.id
         WHERE d._PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)
           AND r._PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)
-          AND d.channelType IN ('InboundCall', 'OutboundCall')
           AND d.talkTime > 0
         ORDER BY d.createdAt DESC
         LIMIT 20
@@ -122,6 +142,7 @@ SELECT
           COUNTIF(d.abandoned > 0) AS abandoned,
           COUNTIF(d.transferred > 0) AS transferred,
           COUNTIF(d.talkTime > 0) AS connected,
+          COUNTIF(d.talkTime > 0 AND d.wrapupTime <= 3600000) AS handled_capped,
           ROUND(
             AVG(IF(d.talkTime > 0 AND d.wrapupTime <= 3600000, d.talkTime + d.holdTime + d.wrapupTime, NULL)) / 1000,
             1
@@ -172,7 +193,6 @@ SELECT
           COUNT(*) AS workitems
         FROM `thrio-prod-4258998.4258998.DATA_WORKITEMS`
         WHERE _PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
-          AND channelType IN ('InboundCall', 'OutboundCall')
         GROUP BY dow, hour
         ORDER BY dow, hour
         )
