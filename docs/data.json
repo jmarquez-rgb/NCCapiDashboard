@@ -1,0 +1,529 @@
+{
+  "updated_at": "2026-10-09T21:36:44+00:00",
+  "window_days": 30,
+  "snapshot": true,
+  "kpis": {
+    "workitems": 671,
+    "connected": 257,
+    "abandoned_calls": 62,
+    "transferred_calls": 136,
+    "talk_avg_sec": 170.0,
+    "hold_avg_sec": 1.5,
+    "acw_avg_sec_capped": 135.0,
+    "aht_mean_sec_capped": 278.2,
+    "aht_median_sec": 101.5,
+    "stuck_over_1h": 14
+  },
+  "coverage": [
+    {
+      "campaignName": "TEST ConnorW Bank DTMF",
+      "connected_calls": 61,
+      "with_summary": 15,
+      "short_isdc": 0,
+      "long_composite": 15
+    },
+    {
+      "campaignName": "Xbert Shop - DTMF",
+      "connected_calls": 58,
+      "with_summary": 39,
+      "short_isdc": 0,
+      "long_composite": 39
+    },
+    {
+      "campaignName": "Xbert Bank - DTMF",
+      "connected_calls": 30,
+      "with_summary": 24,
+      "short_isdc": 0,
+      "long_composite": 24
+    },
+    {
+      "campaignName": "Xbert AI",
+      "connected_calls": 28,
+      "with_summary": 23,
+      "short_isdc": 0,
+      "long_composite": 23
+    },
+    {
+      "campaignName": "Xbert Shop - IVA",
+      "connected_calls": 17,
+      "with_summary": 15,
+      "short_isdc": 0,
+      "long_composite": 15
+    },
+    {
+      "campaignName": "Xbert Care - DTMF",
+      "connected_calls": 12,
+      "with_summary": 8,
+      "short_isdc": 0,
+      "long_composite": 8
+    },
+    {
+      "campaignName": "Title Insurance Demo",
+      "connected_calls": 10,
+      "with_summary": 10,
+      "short_isdc": 0,
+      "long_composite": 0
+    },
+    {
+      "campaignName": "Connor Test",
+      "connected_calls": 10,
+      "with_summary": 5,
+      "short_isdc": 0,
+      "long_composite": 5
+    },
+    {
+      "campaignName": "PSI",
+      "connected_calls": 9,
+      "with_summary": 9,
+      "short_isdc": 0,
+      "long_composite": 9
+    },
+    {
+      "campaignName": "Xbert Shop - Outbound",
+      "connected_calls": 8,
+      "with_summary": 7,
+      "short_isdc": 3,
+      "long_composite": 4
+    },
+    {
+      "campaignName": "Xbert Care - IVA",
+      "connected_calls": 5,
+      "with_summary": 4,
+      "short_isdc": 0,
+      "long_composite": 4
+    },
+    {
+      "campaignName": "Xbert Intake - IVA",
+      "connected_calls": 5,
+      "with_summary": 5,
+      "short_isdc": 5,
+      "long_composite": 0
+    },
+    {
+      "campaignName": "Xbert Bank - IVA",
+      "connected_calls": 3,
+      "with_summary": 3,
+      "short_isdc": 0,
+      "long_composite": 3
+    },
+    {
+      "campaignName": "Xbert Care - Outbound",
+      "connected_calls": 1,
+      "with_summary": 1,
+      "short_isdc": 1,
+      "long_composite": 0
+    },
+    {
+      "campaignName": "Xbert Bank - Outbound",
+      "connected_calls": 1,
+      "with_summary": 0,
+      "short_isdc": 0,
+      "long_composite": 0
+    }
+  ],
+  "wrap_by_summary": [
+    {
+      "summary_type": "no summary",
+      "calls": 88,
+      "wrapup_p25_sec": 14.7,
+      "wrapup_median_sec": 20.9,
+      "wrapup_p75_sec": 36.4
+    },
+    {
+      "summary_type": "short ISDC",
+      "calls": 8,
+      "wrapup_p25_sec": 31.7,
+      "wrapup_median_sec": 39.7,
+      "wrapup_p75_sec": 84.5
+    },
+    {
+      "summary_type": "long composite",
+      "calls": 135,
+      "wrapup_p25_sec": 30.2,
+      "wrapup_median_sec": 51.4,
+      "wrapup_p75_sec": 148.4
+    },
+    {
+      "summary_type": "other",
+      "calls": 10,
+      "wrapup_p25_sec": 43.6,
+      "wrapup_median_sec": 61.0,
+      "wrapup_p75_sec": 162.9
+    }
+  ],
+  "stuck_calls": [
+    {
+      "campaignName": "Xbert Shop - IVA",
+      "dispositionName": "Pending - Escalated to Support",
+      "wrap_hours": 287.3
+    },
+    {
+      "campaignName": "Xbert Shop - IVA",
+      "dispositionName": "Pending - Escalated to Support",
+      "wrap_hours": 280.8
+    },
+    {
+      "campaignName": "TEST ConnorW Bank DTMF",
+      "dispositionName": "Answering Machine",
+      "wrap_hours": 149.3
+    },
+    {
+      "campaignName": "Xbert Shop - DTMF",
+      "dispositionName": "Pending - Escalated to Support",
+      "wrap_hours": 72.8
+    },
+    {
+      "campaignName": "TEST ConnorW Bank DTMF",
+      "dispositionName": "Cancel Appointment",
+      "wrap_hours": 14.5
+    }
+  ],
+  "termination_codes": [
+    {
+      "terminationReason": "20",
+      "workitems": 424,
+      "abandoned_workitems": 0,
+      "transferred_workitems": 84
+    },
+    {
+      "terminationReason": "2",
+      "workitems": 227,
+      "abandoned_workitems": 0,
+      "transferred_workitems": 12
+    },
+    {
+      "terminationReason": "1",
+      "workitems": 155,
+      "abandoned_workitems": 0,
+      "transferred_workitems": 31
+    },
+    {
+      "terminationReason": "6",
+      "workitems": 68,
+      "abandoned_workitems": 68,
+      "transferred_workitems": 9
+    },
+    {
+      "terminationReason": "22",
+      "workitems": 6,
+      "abandoned_workitems": 0,
+      "transferred_workitems": 0
+    },
+    {
+      "terminationReason": "21",
+      "workitems": 2,
+      "abandoned_workitems": 0,
+      "transferred_workitems": 0
+    },
+    {
+      "terminationReason": "24",
+      "workitems": 1,
+      "abandoned_workitems": 0,
+      "transferred_workitems": 0
+    },
+    {
+      "terminationReason": "9",
+      "workitems": 1,
+      "abandoned_workitems": 0,
+      "transferred_workitems": 0
+    }
+  ],
+  "recent_calls": [
+    {
+      "workitem": "7bf366eb",
+      "channelType": "OutboundCall",
+      "talk_sec": 33.9,
+      "wrapup_sec": 39.7,
+      "summary_type": "short",
+      "customer_sentiment": "Frustrated and urgent"
+    },
+    {
+      "workitem": "cb4c27e0",
+      "channelType": "InboundCall",
+      "talk_sec": 100.5,
+      "wrapup_sec": 58.9,
+      "summary_type": "long",
+      "customer_sentiment": null
+    },
+    {
+      "workitem": "75555d7d",
+      "channelType": "InboundCall",
+      "talk_sec": 43.4,
+      "wrapup_sec": 31.6,
+      "summary_type": "none",
+      "customer_sentiment": null
+    },
+    {
+      "workitem": "1708e9c4",
+      "channelType": "OutboundCall",
+      "talk_sec": 25.2,
+      "wrapup_sec": 40.1,
+      "summary_type": "none",
+      "customer_sentiment": null
+    },
+    {
+      "workitem": "62be6597",
+      "channelType": "OutboundCall",
+      "talk_sec": 20.7,
+      "wrapup_sec": 145.7,
+      "summary_type": "none",
+      "customer_sentiment": null
+    },
+    {
+      "workitem": "893e73e1",
+      "channelType": "InboundCall",
+      "talk_sec": 1161.3,
+      "wrapup_sec": 444.0,
+      "summary_type": "long",
+      "customer_sentiment": "Neutral to satisfied"
+    },
+    {
+      "workitem": "b76995cb",
+      "channelType": "InboundCall",
+      "talk_sec": 200.0,
+      "wrapup_sec": 42.8,
+      "summary_type": "long",
+      "customer_sentiment": "Confused and testing the system"
+    },
+    {
+      "workitem": "aea9acea",
+      "channelType": "OutboundCall",
+      "talk_sec": 2.3,
+      "wrapup_sec": 18.9,
+      "summary_type": "short",
+      "customer_sentiment": "Neutral to abrupt"
+    },
+    {
+      "workitem": "b4dda44f",
+      "channelType": "OutboundCall",
+      "talk_sec": 251.9,
+      "wrapup_sec": 43.5,
+      "summary_type": "long",
+      "customer_sentiment": "Neutral"
+    },
+    {
+      "workitem": "5c0b61a5",
+      "channelType": "OutboundCall",
+      "talk_sec": 31.5,
+      "wrapup_sec": 32.1,
+      "summary_type": "short",
+      "customer_sentiment": "Neutral"
+    },
+    {
+      "workitem": "9d8e5b9f",
+      "channelType": "InboundCall",
+      "talk_sec": 165.9,
+      "wrapup_sec": 25.8,
+      "summary_type": "long",
+      "customer_sentiment": "Concerned"
+    },
+    {
+      "workitem": "bd0a60a6",
+      "channelType": "InboundCall",
+      "talk_sec": 150.2,
+      "wrapup_sec": 116.0,
+      "summary_type": "short",
+      "customer_sentiment": "Neutral to receptive"
+    },
+    {
+      "workitem": "76e01eba",
+      "channelType": "InboundCall",
+      "talk_sec": 76.9,
+      "wrapup_sec": 879.1,
+      "summary_type": "long",
+      "customer_sentiment": "Neutral tone"
+    },
+    {
+      "workitem": "5a4515c9",
+      "channelType": "InboundCall",
+      "talk_sec": 280.6,
+      "wrapup_sec": 38.8,
+      "summary_type": "long",
+      "customer_sentiment": "Very negative"
+    },
+    {
+      "workitem": "a1b79d71",
+      "channelType": "InboundCall",
+      "talk_sec": 10.7,
+      "wrapup_sec": 20.7,
+      "summary_type": "long",
+      "customer_sentiment": "Concerned or surprised (muted at start)"
+    },
+    {
+      "workitem": "36afb24b",
+      "channelType": "InboundCall",
+      "talk_sec": 217.6,
+      "wrapup_sec": 117.1,
+      "summary_type": "long",
+      "customer_sentiment": "Very negative"
+    },
+    {
+      "workitem": "290858a8",
+      "channelType": "InboundCall",
+      "talk_sec": 32.4,
+      "wrapup_sec": 24.9,
+      "summary_type": "long",
+      "customer_sentiment": "Neutral, asked for a person"
+    }
+  ],
+  "channels": [
+    {
+      "channelType": "InboundCall",
+      "workitems": 466,
+      "abandoned": 62,
+      "transferred": 135,
+      "joined_workitems": 468,
+      "with_summary": 142
+    },
+    {
+      "channelType": "OutboundCall",
+      "workitems": 205,
+      "abandoned": 0,
+      "transferred": 1,
+      "joined_workitems": 205,
+      "with_summary": 29
+    },
+    {
+      "channelType": "Survey",
+      "workitems": 68,
+      "abandoned": 0,
+      "transferred": 0,
+      "joined_workitems": 68,
+      "with_summary": 0
+    },
+    {
+      "channelType": "InboundSMS",
+      "workitems": 66,
+      "abandoned": 0,
+      "transferred": 0,
+      "joined_workitems": null,
+      "with_summary": null
+    },
+    {
+      "channelType": "Chat",
+      "workitems": 30,
+      "abandoned": 5,
+      "transferred": 0,
+      "joined_workitems": 30,
+      "with_summary": 21
+    },
+    {
+      "channelType": "Email",
+      "workitems": 17,
+      "abandoned": 0,
+      "transferred": 0,
+      "joined_workitems": 17,
+      "with_summary": 0
+    },
+    {
+      "channelType": "PredictiveCall",
+      "workitems": 16,
+      "abandoned": 0,
+      "transferred": 0,
+      "joined_workitems": 16,
+      "with_summary": 14
+    },
+    {
+      "channelType": "OutboundEmail",
+      "workitems": 7,
+      "abandoned": 0,
+      "transferred": 0,
+      "joined_workitems": 7,
+      "with_summary": 0
+    },
+    {
+      "channelType": "OutboundSMS",
+      "workitems": 5,
+      "abandoned": 1,
+      "transferred": 0,
+      "joined_workitems": null,
+      "with_summary": null
+    },
+    {
+      "channelType": "PredictiveSMS",
+      "workitems": 4,
+      "abandoned": 0,
+      "transferred": 0,
+      "joined_workitems": 4,
+      "with_summary": 0
+    },
+    {
+      "channelType": "ProgressiveCall",
+      "workitems": 1,
+      "abandoned": 0,
+      "transferred": 0,
+      "joined_workitems": 1,
+      "with_summary": 1
+    }
+  ],
+  "agents": [],
+  "ai_evals": [
+    {
+      "workitem": "61265671",
+      "campaignName": "Xbert Care - DTMF",
+      "channelType": "InboundSMS",
+      "transferred_to_agent": true,
+      "talk_sec": null,
+      "day": "2026-10-08",
+      "created_ms": 1791490188283,
+      "template": "long",
+      "composite": 62,
+      "grade": "D",
+      "benchmark_label": "At benchmark",
+      "pillar_names": [
+        "Integrity",
+        "Skill",
+        "Diligence",
+        "Care"
+      ],
+      "pillar_scores": [
+        3,
+        2,
+        2,
+        3
+      ],
+      "customer_sentiment": "Neutral",
+      "agent_sentiment": "Neutral",
+      "reason": "Patient requested general assistance and was routed to the transfer queue.",
+      "summary_disposition": "Transferred",
+      "interaction_type": "Billing-Assisted",
+      "coaching": [
+        "1. Proactive Inquiry"
+      ]
+    },
+    {
+      "workitem": "7bf366eb",
+      "campaignName": "Xbert Shop - Outbound",
+      "channelType": "OutboundCall",
+      "transferred_to_agent": false,
+      "talk_sec": 33.9,
+      "day": "2026-10-09",
+      "created_ms": 1791560175622,
+      "template": "short",
+      "composite": 31,
+      "grade": null,
+      "benchmark_label": null,
+      "pillar_names": [
+        "Care",
+        "Diligence",
+        "Integrity",
+        "Skill"
+      ],
+      "pillar_scores": [
+        1,
+        1,
+        2,
+        1
+      ],
+      "customer_sentiment": "Frustrated and urgent",
+      "agent_sentiment": "Unresponsive and erratic",
+      "reason": null,
+      "summary_disposition": null,
+      "interaction_type": "Order-Assisted (attempted, but failed)",
+      "coaching": []
+    }
+  ],
+  "daily": [],
+  "hourly": [],
+  "dispositions": []
+}

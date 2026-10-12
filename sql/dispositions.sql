@@ -1,0 +1,9 @@
+SELECT
+  dispositionName,
+  COUNT(*) AS workitems
+FROM `thrio-prod-4258998.4258998.DATA_WORKITEMS`
+WHERE _PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+  AND dispositionName IS NOT NULL
+GROUP BY dispositionName
+ORDER BY workitems DESC
+LIMIT 12
