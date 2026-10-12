@@ -691,7 +691,7 @@ const note=(t,k='info')=>`<div class="note ${k}">${ico('info','sm')}<div>${t}</d
 const covColor=p=>p>=80?'#2EA06F':p>=50?'#F1BE4A':'#EA6C8B';
 const TPLN={'none':'No summary','short':'Short ISDC','long':'Long composite','other':'Other layout'};
 function totals(){const c=covs(),conn=sum(c.map(x=>x.connected_calls)),ws=sum(c.map(x=>x.with_summary)),sh=sum(c.map(x=>x.short_isdc)),lg=sum(c.map(x=>x.long_composite));return{conn,ws,sh,lg,ot:ws-sh-lg,none:conn-ws,pct:pctOf(ws,conn)}}
-const srcWord=()=>LIVE?(D.source==='api'?'Refreshed from the NCC API':'Refreshed from BigQuery'):PASTED?'Pasted from BigQuery':'Snapshot';
+const srcWord=()=>LIVE?(D.source==='api'?'Refreshed from the NCC API':D.source==='api-partial'?'Snapshot plus live NCC API trends':'Refreshed from BigQuery'):PASTED?'Pasted from BigQuery':'Snapshot';
 const when=()=>{try{return new Date(D.updated_at).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}catch(e){return ''}};
 
 /* ---------- trends: daily, busiest hours, dispositions ---------- */
@@ -734,7 +734,7 @@ P.overview={title:'Contact Center Overview',sub:'All channels · last 30 days ·
   const abCard=card('Where calls and chats were abandoned',hbars(abs.map(c=>({k:c.channelType,v:c.abandoned,color:'#EA6C8B',label:`${esc(c.channelType)} <span class="muted xs">of ${c.workitems}</span>`,tip:`<b>${esc(c.channelType)}</b><br>${c.abandoned} of ${c.workitems} (${pc(c.abandoned,c.workitems)})`})),{fmt:v=>v})+'<div class="xs muted mt">Only channels with at least one abandon are shown.</div>');
   const cv=cs.filter(c=>c.joined_workitems>0);
   const cvCard=card('AI summary coverage by channel type',hbars(cv.map(c=>({k:c.channelType,v:pctOf(c.with_summary,c.joined_workitems),color:covColor(pctOf(c.with_summary,c.joined_workitems)),label:`${esc(c.channelType)} <span class="muted xs">${c.with_summary} of ${c.joined_workitems}</span>`,tip:`<b>${esc(c.channelType)}</b><br>${c.with_summary} of ${c.joined_workitems} matched workitems`})),{max:100,fmt:v=>f1(v,0)+'%'})+'<div class="xs muted mt">Counts every matched workitem, including calls that never connected, so voice looks lower than on the AI Summary page.</div>');
-  return top+`<div class="g g21">${tbl}<div class="g" style="align-content:start">${mix}</div></div><div class="g g3">${voice}${abCard}${cvCard}</div>`+trendsBlock();
+  return top+`<div class="g g21">${tbl}<div class="g" style="align-content:start">${mix}</div></div><div class="g g3">${voice}${abCard}${cvCard}</div>`+handleByChannel(chans(),true)+trendsBlock();
 }};
 P.livedash=P.overview;
 /* ---------- Handle Time ---------- */
@@ -777,7 +777,13 @@ channels:`SELECT
     AVG(IF(d.talkTime > 0 AND d.wrapupTime <= 3600000, d.talkTime + d.holdTime + d.wrapupTime, NULL)) / 1000,
     1
   ) AS handle_avg_sec_capped,
+  ROUND(AVG(IF(d.talkTime > 0 AND d.wrapupTime <= 3600000, d.talkTime, NULL)) / 1000, 1) AS talk_avg_sec,
+  ROUND(AVG(IF(d.talkTime > 0 AND d.wrapupTime <= 3600000, d.holdTime, NULL)) / 1000, 1) AS hold_avg_sec,
+  ROUND(AVG(IF(d.talkTime > 0 AND d.wrapupTime <= 3600000, d.wrapupTime, NULL)) / 1000, 1) AS wrap_avg_sec,
+  ROUND(APPROX_QUANTILES(IF(d.talkTime > 0 AND d.wrapupTime <= 3600000, d.talkTime + d.holdTime + d.wrapupTime, NULL), 100 IGNORE NULLS)[SAFE_OFFSET(50)] / 1000, 1) AS handle_median_sec,
+  ROUND(APPROX_QUANTILES(IF(d.talkTime > 0 AND d.wrapupTime <= 3600000, d.talkTime + d.holdTime + d.wrapupTime, NULL), 100 IGNORE NULLS)[SAFE_OFFSET(90)] / 1000, 1) AS handle_p90_sec,
   ROUND(AVG(IF(d.workitemTime > 0 AND d.wrapupTime <= 3600000, d.workitemTime, NULL)) / 1000, 1) AS open_avg_sec,
+  ROUND(APPROX_QUANTILES(IF(d.workitemTime > 0 AND d.wrapupTime <= 3600000, d.workitemTime, NULL), 100 IGNORE NULLS)[SAFE_OFFSET(50)] / 1000, 1) AS open_median_sec,
   ROUND(AVG(d.agentMessageCount), 1) AS agent_msgs_avg,
   ROUND(AVG(d.consumerMessageCount), 1) AS customer_msgs_avg,
   ROUND(AVG(d.botMessageCount), 1) AS bot_msgs_avg,
@@ -789,7 +795,8 @@ LEFT JOIN \`thrio-prod-4258998.4258998.REPORTS_WORKITEMS\` AS r
   AND r._PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
 WHERE d._PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
 GROUP BY d.channelType
-ORDER BY workitems DESC`,
+ORDER BY workitems DESC
+`,
 agents:`DECLARE agent_days INT64 DEFAULT 730;
 
 SELECT
@@ -952,7 +959,13 @@ SELECT
             AVG(IF(d.talkTime > 0 AND d.wrapupTime <= 3600000, d.talkTime + d.holdTime + d.wrapupTime, NULL)) / 1000,
             1
           ) AS handle_avg_sec_capped,
+          ROUND(AVG(IF(d.talkTime > 0 AND d.wrapupTime <= 3600000, d.talkTime, NULL)) / 1000, 1) AS talk_avg_sec,
+          ROUND(AVG(IF(d.talkTime > 0 AND d.wrapupTime <= 3600000, d.holdTime, NULL)) / 1000, 1) AS hold_avg_sec,
+          ROUND(AVG(IF(d.talkTime > 0 AND d.wrapupTime <= 3600000, d.wrapupTime, NULL)) / 1000, 1) AS wrap_avg_sec,
+          ROUND(APPROX_QUANTILES(IF(d.talkTime > 0 AND d.wrapupTime <= 3600000, d.talkTime + d.holdTime + d.wrapupTime, NULL), 100 IGNORE NULLS)[SAFE_OFFSET(50)] / 1000, 1) AS handle_median_sec,
+          ROUND(APPROX_QUANTILES(IF(d.talkTime > 0 AND d.wrapupTime <= 3600000, d.talkTime + d.holdTime + d.wrapupTime, NULL), 100 IGNORE NULLS)[SAFE_OFFSET(90)] / 1000, 1) AS handle_p90_sec,
           ROUND(AVG(IF(d.workitemTime > 0 AND d.wrapupTime <= 3600000, d.workitemTime, NULL)) / 1000, 1) AS open_avg_sec,
+          ROUND(APPROX_QUANTILES(IF(d.workitemTime > 0 AND d.wrapupTime <= 3600000, d.workitemTime, NULL), 100 IGNORE NULLS)[SAFE_OFFSET(50)] / 1000, 1) AS open_median_sec,
           ROUND(AVG(d.agentMessageCount), 1) AS agent_msgs_avg,
           ROUND(AVG(d.consumerMessageCount), 1) AS customer_msgs_avg,
           ROUND(AVG(d.botMessageCount), 1) AS bot_msgs_avg,
@@ -1148,6 +1161,25 @@ const cellJson=t=>{const a=t.indexOf('{'),b=t.lastIndexOf('}');if(a<0||b<=a)retu
 ACT.impai=()=>{const j=cellJson(($('#imp_ai')||{}).value||'');if(!j||!j.ai_evals||!j.ai_evals.length){toast('That does not look like the AI query result. Copy the whole result cell.','bad');return}
   try{localStorage.setItem('ncc_import_ai',JSON.stringify(j))}catch(e){}D=Object.assign({},D,{ai_evals:j.ai_evals,imported_ai:true});render(true);toast(j.ai_evals.length+' AI evaluations loaded')};
 ACT.impaiclear=()=>{try{localStorage.removeItem('ncc_import_ai')}catch(e){}D=Object.assign({},D,{ai_evals:SNAP.ai_evals,imported_ai:false});render(true);toast('Back to the 2 examples')};
+
+/* ---------- handle time by channel ---------- */
+const VOICEISH=t=>/Call$/.test(String(t));
+function handleByChannel(cs,compact){
+  const rows=cs.map(c=>{
+    if(VOICEISH(c.channelType)){
+      if(c.talk_avg_sec==null&&c.handle_avg_sec_capped==null)return null;
+      const talk=+c.talk_avg_sec||0,hold=+c.hold_avg_sec||0,wrap=+c.wrap_avg_sec||0,tot=(talk+hold+wrap)||+c.handle_avg_sec_capped||0;
+      return tot>0?{c,kind:'call',segs:(talk+hold+wrap)?[['Talk',talk,'#5B8BBF'],['Hold',hold,'#E0A63A'],['Wrap-up',wrap,'#68BFBF']]:[['Handle',tot,'#5B8BBF']],tot,n:c.connected}:null;
+    }
+    if(c.open_avg_sec==null||!(c.open_avg_sec>0))return null;
+    return {c,kind:'open',segs:[['Open time',+c.open_avg_sec,'#8E7CC3']],tot:+c.open_avg_sec,n:c.workitems};
+  }).filter(Boolean).sort((a,b)=>b.tot-a.tot);
+  if(!rows.length)return card('Handle time by channel',`<div class="empty" style="padding:22px">Handle time by channel needs the channels numbers. Open <b>Data Sources</b>, copy the main query, run it in BigQuery, and paste the result.<div class="mt"><button class="btn pri sm" ${A('go','sources')}>Go to Data Sources</button></div></div>`);
+  const line=(r,mx)=>{const c=r.c;return `<div style="display:grid;grid-template-columns:190px 1fr 150px;gap:12px;align-items:center;margin:10px 0"><div><div class="b sm">${esc(c.channelType)}</div>${r.kind==='call'&&c.handle_median_sec?`<div class="muted xs">median ${dur(c.handle_median_sec)} · 90th ${dur(c.handle_p90_sec||0)}</div>`:`<div class="muted xs">${r.kind==='call'?'talk + hold + wrap-up':'time open'}</div>`}</div><div style="display:flex;height:22px;background:#EDEBE5;border-radius:6px;overflow:hidden" ${TIP('<b>'+esc(c.channelType)+'</b><br>'+r.segs.map(x=>x[0]+': '+dur(x[1])).join('<br>')+(c.handle_median_sec&&r.kind==='call'?'<br>Median: '+dur(c.handle_median_sec):'')+(c.handle_p90_sec&&r.kind==='call'?'<br>90th percentile: '+dur(c.handle_p90_sec):'')+'<br>'+fmtN(r.n)+(r.kind==='call'?' connected calls':' workitems'))}>${r.segs.map(x=>`<div style="width:${x[1]/mx*100}%;background:${x[2]};min-width:${x[1]>0?2:0}px"></div>`).join('')}</div><div class="r"><b style="font-size:16px;font-weight:600">${dur(r.tot)}</b><div class="muted xs">${fmtN(r.n)} ${r.kind==='call'?'calls':'workitems'}</div></div></div>`};
+  const part=(k,title,sub,lg)=>{const rr=rows.filter(r=>r.kind===k);if(!rr.length)return '';const mx=Math.max(...rr.map(r=>r.tot));return `<div style="margin:6px 0 14px"><div class="row" style="gap:10px;align-items:baseline"><b>${title}</b><span class="muted xs">${sub}</span></div>${rr.map(r=>line(r,mx)).join('')}${lg}</div>`};
+  const body=part('call','Calls: voice and dialer','talk + hold + wrap-up, connected calls',legend([{name:'Talk',color:'#5B8BBF',sq:1},{name:'Hold',color:'#E0A63A',sq:1},{name:'Wrap-up',color:'#68BFBF',sq:1}]))+part('open','Chat, SMS and email','time the workitem stayed open, not agent effort',legend([{name:'Time open',color:'#8E7CC3',sq:1}]));
+  return card('Handle time by channel',body+(compact?'':`<div class="note info mt">${ico('info','sm')}<div><b>How to read this.</b> For calls, handle time is talk plus hold plus wrap-up on connected calls, with wrap-ups over an hour left out. For chat, SMS and email the data only tells us how long the workitem stayed open, which includes the wait between messages. Those bars use their own scale and are not handle time, so do not compare them with calls. The AI summary wait is inside wrap-up for campaigns that use it.</div></div>`),{info:'Averages over the last 30 days. Needs the channels numbers from the main query.'});
+}
 /* ---------- Channels ---------- */
 S.pg.ch=S.pg.ch||{tab:'All'};
 ACT.chtab=v=>{S.pg.ch.tab=v;render(true)};
@@ -1156,15 +1188,16 @@ const GNOTE={Voice:'Handle time and wrap-up for voice are on the Voice Handle Ti
 P.channels={title:'Channels',sub:'Voice, Dialer, Chat, SMS, Email and Survey · last 30 days',body(){
   const tab=S.pg.ch.tab,gs=groups(),all=chans(),cs=tab==='All'?all:all.filter(c=>groupOf(c.channelType)===tab),g=tab==='All'?null:gs.find(x=>x.g===tab);
   const w=cs.reduce((a,c)=>a+(c.workitems||0),0),ab=cs.reduce((a,c)=>a+(c.abandoned||0),0),tr=cs.reduce((a,c)=>a+(c.transferred||0),0),jn=cs.reduce((a,c)=>a+(c.joined_workitems||0),0),ws=cs.reduce((a,c)=>a+(c.with_summary||0),0);
-  const hasConn=cs.some(c=>c.connected!=null),hasH=cs.some(c=>c.handle_avg_sec_capped!=null),hasO=cs.some(c=>c.open_avg_sec!=null),hasM=cs.some(c=>c.agent_msgs_avg!=null),enriched=all.some(c=>c.connected!=null);
+  const hasConn=cs.some(c=>c.connected!=null),hasH=cs.some(c=>c.handle_avg_sec_capped!=null),hasMed=cs.some(c=>c.handle_median_sec!=null),hasO=cs.some(c=>c.open_avg_sec!=null),hasM=cs.some(c=>c.agent_msgs_avg!=null),enriched=all.some(c=>c.connected!=null);
   const cols=[{h:'Channel type'},{h:'Group'},{h:'Workitems',cls:'r'},{h:'Abandoned',cls:'r'},{h:'Transferred',cls:'r'}];
-  if(hasConn)cols.push({h:'Connected',cls:'r'});if(hasH)cols.push({h:'Avg handle',cls:'r'});if(hasO)cols.push({h:'Avg open time',cls:'r'});if(hasM)cols.push({h:'Msgs agent / customer / bot',cls:'r'});cols.push({h:'With AI summary',cls:'r'});
-  const row=c=>`<tr><td><b>${esc(c.channelType)}</b></td><td><span class="dot" style="background:${GCOL[groupOf(c.channelType)]};margin-right:6px"></span>${groupOf(c.channelType)}</td><td class="r">${fmtN(c.workitems)}</td><td class="r">${c.abandoned}</td><td class="r">${c.transferred}</td>${hasConn?`<td class="r">${num(c.connected)}</td>`:''}${hasH?`<td class="r">${c.handle_avg_sec_capped?dur(c.handle_avg_sec_capped):'<span class="faint">-</span>'}</td>`:''}${hasO?`<td class="r">${c.open_avg_sec?dur(c.open_avg_sec):'<span class="faint">-</span>'}</td>`:''}${hasM?`<td class="r">${c.agent_msgs_avg==null?'-':f1(c.agent_msgs_avg)+' / '+f1(c.customer_msgs_avg)+' / '+f1(c.bot_msgs_avg)}</td>`:''}<td class="r">${c.joined_workitems?`${c.with_summary} of ${c.joined_workitems} (${pc(c.with_summary,c.joined_workitems)})`:'<span class="faint">not matched</span>'}</td></tr>`;
+  if(hasConn)cols.push({h:'Connected',cls:'r'});if(hasH)cols.push({h:'Avg handle',cls:'r'});if(hasMed)cols.push({h:'Median handle',cls:'r'},{h:'90th percentile',cls:'r'});if(hasO)cols.push({h:'Avg open time',cls:'r'});if(hasM)cols.push({h:'Msgs agent / customer / bot',cls:'r'});cols.push({h:'With AI summary',cls:'r'});
+  const row=c=>`<tr><td><b>${esc(c.channelType)}</b></td><td><span class="dot" style="background:${GCOL[groupOf(c.channelType)]};margin-right:6px"></span>${groupOf(c.channelType)}</td><td class="r">${fmtN(c.workitems)}</td><td class="r">${c.abandoned}</td><td class="r">${c.transferred}</td>${hasConn?`<td class="r">${num(c.connected)}</td>`:''}${hasH?`<td class="r">${c.handle_avg_sec_capped?dur(c.handle_avg_sec_capped):'<span class="faint">-</span>'}</td>`:''}${hasMed?`<td class="r">${c.handle_median_sec?dur(c.handle_median_sec):'<span class="faint">-</span>'}</td><td class="r">${c.handle_p90_sec?dur(c.handle_p90_sec):'<span class="faint">-</span>'}</td>`:''}${hasO?`<td class="r">${c.open_avg_sec?dur(c.open_avg_sec):'<span class="faint">-</span>'}</td>`:''}${hasM?`<td class="r">${c.agent_msgs_avg==null?'-':f1(c.agent_msgs_avg)+' / '+f1(c.customer_msgs_avg)+' / '+f1(c.bot_msgs_avg)}</td>`:''}<td class="r">${c.joined_workitems?`${c.with_summary} of ${c.joined_workitems} (${pc(c.with_summary,c.joined_workitems)})`:'<span class="faint">not matched</span>'}</td></tr>`;
   const tabs=['All',...gs.map(x=>x.g)];
   return `<div class="row wrap">${seg(tabs,tab,'chtab')}</div>
   <div class="g g4">${kpi(tab==='All'?'All channels':tab,fmtN(w),'workitems')}${kpi('Abandoned',fmtN(ab),pc(ab,w)+' of workitems',{cls:ab?'bad':''})}${kpi('Transferred',fmtN(tr),'meaning not yet confirmed')}${kpi('With an AI summary',jn?pc(ws,jn):'-',jn?ws+' of '+jn+' matched':'not matched to REPORTS_WORKITEMS')}</div>
   ${tab==='All'?'':note(GNOTE[tab]||'')}
   ${tab==='All'?`<div class="g g2">${card('Workitems by channel type',hbars(all.map(c=>({k:c.channelType,v:c.workitems,color:GCOL[groupOf(c.channelType)],label:`${esc(c.channelType)} <span class="muted xs">${groupOf(c.channelType)}</span>`,tip:`<b>${esc(c.channelType)}</b><br>${fmtN(c.workitems)} workitems`})),{fmt:fmtN}))}${card('Abandon rate by channel type',hbars(all.filter(c=>c.workitems>=5).map(c=>({k:c.channelType,v:pctOf(c.abandoned,c.workitems),color:c.abandoned?'#EA6C8B':'#68BFBF',label:`${esc(c.channelType)} <span class="muted xs">${c.abandoned} of ${c.workitems}</span>`})),{max:20,fmt:v=>f1(v)+'%'})+'<div class="xs muted mt">Channel types with fewer than 5 workitems are left out.</div>')}</div>`:''}
+  ${handleByChannel(cs,false)}
   ${card(tab==='All'?'Every channel type':tab+' channel types',table(cols,cs.map(row)),{cls:'flat'})}
   ${enriched?'':importCard('channels','Connected calls, handle time, open time and message counts for each channel are not loaded yet. Run this query and paste the results to add them.')}`;
 }};
@@ -1226,7 +1259,7 @@ ACT.agq=v=>{S.pg.ag.q=v;refresh('agtbl')};
 const agRows=()=>{const q=(S.pg.ag.q||'').toLowerCase().trim(),a=agentsList();return q?a.filter(x=>((x.agent_name||'')+' '+(x.agent_login||'')).toLowerCase().includes(q)):a};
 P.agents={title:'Agents',sub:'Everyone who handled at least one workitem in the window',body(){
   const a=agentsList();
-  if(!a.length)return `<div class="card"><div class="empty"><div style="display:flex;justify-content:center">${ico('users','')}</div><div class="b" style="margin-top:8px;font-size:16px">No agent data loaded yet</div><div class="muted sm" style="max-width:56ch;margin:6px auto 0">Agents come from REPORTS_WORKITEMS (the agent username inside the workitem). We have not pulled them yet, and none of the numbers here are made up. Run the query below to load the real ones.</div></div></div>`+importCard('agents','Agent names are made from the username, for example derek.gray+superagent@nextiva.com becomes Derek Gray. The query looks back 730 days so it catches everyone.');
+  if(!a.length)return `<div class="card"><div class="empty"><div style="display:flex;justify-content:center">${ico('users','')}</div><div class="b" style="margin-top:8px;font-size:16px">No agent data loaded yet</div><div class="muted sm" style="max-width:56ch;margin:6px auto 0">Agents come from REPORTS_WORKITEMS (the agent username inside the workitem). We have not pulled them yet, and none of the numbers here are made up. Run the query below to load the real ones.</div></div></div>`+rosterCard()+importCard('agents','Agent names are made from the username, for example derek.gray+superagent@nextiva.com becomes Derek Gray. The query looks back 730 days so it catches everyone.');
   const real=a.filter(x=>!/^no agent$/i.test(x.agent_name)),tot=sum(a.map(x=>x.workitems||0)),top=real.slice(0,12),win=D.agent_days?D.agent_days+' days':'the query window';
   return `<div class="g g4">${kpi('Agents',real.length,'seen in '+win)}${kpi('Workitems with an agent',fmtN(sum(real.map(x=>x.workitems||0))),'of '+fmtN(tot)+' matched')}${kpi('Connected calls',fmtN(sum(real.map(x=>x.connected_calls||0))),'talk time above zero')}${kpi('Transferred',fmtN(sum(real.map(x=>x.transferred||0))),'meaning not yet confirmed')}</div>
   ${card('Workitems by agent and channel (top 12)',barChart({labels:top.map(x=>x.agent_name.split(' ')[0]),stacked:true,h:300,w:760,groups:[['Calls','calls',CHG_COL.Voice],['Chats','chats',GCOL.Chat],['SMS','sms',GCOL.SMS],['Emails','emails',GCOL.Email]].map(g=>({name:g[0],color:g[2],data:top.map(x=>x[g[1]]||0)})),act:'agentd',actArg:(g,i)=>top[i].agent_name+'|'+(top[i].agent_login||''),tip:(g,i)=>`<b>${esc(top[i].agent_name)}</b><br>Calls ${top[i].calls||0}<br>Chats ${top[i].chats||0}<br>SMS ${top[i].sms||0}<br>Emails ${top[i].emails||0}`})+legend([{name:'Calls',color:GCOL.Voice,sq:1},{name:'Chats',color:GCOL.Chat,sq:1},{name:'SMS',color:GCOL.SMS,sq:1},{name:'Emails',color:GCOL.Email,sq:1}])+'<div class="xs muted" style="text-align:center">Click a bar for that agent.</div>')}
@@ -1254,7 +1287,7 @@ function shell(){
 }
 function updateNav(){const{name}=route(),key=name==='livedash'?'overview':name;$$('.ni').forEach(n=>n.classList.toggle('on',n.dataset.r===key));const c=$('#srcchip');if(c){c.className='chip '+(LIVE||PASTED?'c-green':'c-amber');c.textContent=srcWord()+' · '+when()}}
 function phead(pg,args){const title=typeof pg.title==='function'?pg.title(args):pg.title;return `<div class="ph"><h2>${esc(title)}</h2>${pg.sub?`<span class="sub">${pg.sub}</span>`:''}<span class="sp"></span><span class="lu">${srcWord()} as of ${when()}</span></div>`}
-async function loadData(){try{const r=await fetch('data.json?'+Date.now(),{cache:'no-store'});if(r.ok){const j=await r.json();if(j&&j.kpis&&!j.error&&!j.snapshot){D=Object.assign({},SNAP,j);LIVE=true;applyImports();return true}}}catch(e){}applyImports();return false}
+async function loadData(){try{const r=await fetch('data.json?'+Date.now(),{cache:'no-store'});if(r.ok){const j=await r.json();if(j&&(j.kpis||j.source)&&!j.error&&!j.snapshot){D=Object.assign({},SNAP,j);LIVE=true;applyImports();return true}}}catch(e){}applyImports();return false}
 ACT.refresh=async(a,el)=>{const s=el.querySelector('svg');if(s)s.classList.add('rotate');const ok=await loadData();if(s)s.classList.remove('rotate');render(true);toast(ok?'Refreshed from data.json':'No newer data.json found. Showing the snapshot.')};
 async function boot(){shell();await loadData();render(false);updateNav()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();

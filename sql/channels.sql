@@ -8,7 +8,13 @@ SELECT
     AVG(IF(d.talkTime > 0 AND d.wrapupTime <= 3600000, d.talkTime + d.holdTime + d.wrapupTime, NULL)) / 1000,
     1
   ) AS handle_avg_sec_capped,
+  ROUND(AVG(IF(d.talkTime > 0 AND d.wrapupTime <= 3600000, d.talkTime, NULL)) / 1000, 1) AS talk_avg_sec,
+  ROUND(AVG(IF(d.talkTime > 0 AND d.wrapupTime <= 3600000, d.holdTime, NULL)) / 1000, 1) AS hold_avg_sec,
+  ROUND(AVG(IF(d.talkTime > 0 AND d.wrapupTime <= 3600000, d.wrapupTime, NULL)) / 1000, 1) AS wrap_avg_sec,
+  ROUND(APPROX_QUANTILES(IF(d.talkTime > 0 AND d.wrapupTime <= 3600000, d.talkTime + d.holdTime + d.wrapupTime, NULL), 100 IGNORE NULLS)[SAFE_OFFSET(50)] / 1000, 1) AS handle_median_sec,
+  ROUND(APPROX_QUANTILES(IF(d.talkTime > 0 AND d.wrapupTime <= 3600000, d.talkTime + d.holdTime + d.wrapupTime, NULL), 100 IGNORE NULLS)[SAFE_OFFSET(90)] / 1000, 1) AS handle_p90_sec,
   ROUND(AVG(IF(d.workitemTime > 0 AND d.wrapupTime <= 3600000, d.workitemTime, NULL)) / 1000, 1) AS open_avg_sec,
+  ROUND(APPROX_QUANTILES(IF(d.workitemTime > 0 AND d.wrapupTime <= 3600000, d.workitemTime, NULL), 100 IGNORE NULLS)[SAFE_OFFSET(50)] / 1000, 1) AS open_median_sec,
   ROUND(AVG(d.agentMessageCount), 1) AS agent_msgs_avg,
   ROUND(AVG(d.consumerMessageCount), 1) AS customer_msgs_avg,
   ROUND(AVG(d.botMessageCount), 1) AS bot_msgs_avg,
