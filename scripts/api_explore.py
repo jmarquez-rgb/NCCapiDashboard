@@ -2,7 +2,9 @@
 names, phone numbers, emails, transcripts or summary text. Run it from GitHub: Actions > Refresh demo data > Run workflow > mode: explore.
 Version 3: looks for a richer workitem record (agent, events, AI summary) than the slim history list.
 """
+import base64
 import datetime
+import http.client
 import json
 import os
 import statistics
@@ -39,12 +41,79 @@ def objs_of(j):
     return []
 
 
+SEEN = set()
+
+
 def keys_of(objs):
     k = set()
     for o in objs:
         if isinstance(o, dict):
             k |= set(o)
+    SEEN.update(k)
     return k
+
+
+STATS_PREFIXES = ["/statistics", "/stats", "/analytics", "/users", "/data", "/workflows", ""]
+STATS_TAILS = ["/api/stats/users", "/api/stats/queues", "/api/stats/workitems", "/api/stats/campaigns", "/api/stats"]
+WS_PATHS = ["/statistics/ws", "/statistics/websocket", "/statistics/stomp", "/stats/ws", "/ws", "/websocket", "/stomp", "/users/ws", "/socket"]
+
+
+def names(j):
+    if isinstance(j, list):
+        first = sorted(j[0]) if j and isinstance(j[0], dict) else []
+        return f"list[{len(j)}]" + (", item fields: " + ", ".join(first)[:500] if first else "")
+    if isinstance(j, dict):
+        return "object fields: " + ", ".join(sorted(j))[:500]
+    return type(j).__name__
+
+
+def drill(j):
+    """Field NAMES and counts only, for the supervisor stats message shape."""
+    st = j.get("stats") if isinstance(j, dict) else None
+    if not isinstance(st, dict):
+        return
+    for part, items in st.items():
+        if isinstance(items, dict) and items:
+            first = next(iter(items.values()))
+            print(f"     stats.{part}: {len(items)} items; item fields: " + (", ".join(sorted(first))[:600] if isinstance(first, dict) else type(first).__name__))
+            if isinstance(first, dict) and isinstance(first.get("media"), dict) and first["media"]:
+                m = first["media"]
+                mf = next(iter(m.values()))
+                print(f"       media types seen: {sorted(m)}")
+                print("       media fields: " + (", ".join(sorted(mf))[:500] if isinstance(mf, dict) else ""))
+        else:
+            print(f"     stats.{part}: {tname(items) if 'tname' in globals() else type(items).__name__}")
+
+
+def stats_probe():
+    print("\n8. REAL-TIME STATISTICS REST ADDRESSES (only non-404 results are listed):")
+    found, n404 = [], 0
+    for pre in STATS_PREFIXES:
+        for tail in STATS_TAILS:
+            path = pre + tail
+            code, j = api(path)
+            if code == 404:
+                n404 += 1
+                continue
+            print(f"   {code}  {path}")
+            if code == 200 and j is not None:
+                found.append((path, j))
+    print(f"   ({n404} other addresses returned 404)")
+    for path, j in found:
+        print(f"   {path} -> {names(j)}")
+        drill(j)
+    host = BASE.split("://", 1)[1].split("/")[0]
+    print("\n9. WEBSOCKET ADDRESS CHECK (101, 400, 401, 403 or 426 usually means something is listening; 404 means no):")
+    for p in WS_PATHS:
+        try:
+            conn = http.client.HTTPSConnection(host, timeout=15) if BASE.startswith("https") else http.client.HTTPConnection(host, timeout=15)
+            conn.request("GET", p, headers={"Upgrade": "websocket", "Connection": "Upgrade", "Sec-WebSocket-Version": "13",
+                                            "Sec-WebSocket-Key": base64.b64encode(os.urandom(16)).decode(), "Authorization": TOKEN, "User-Agent": UA})
+            r = conn.getresponse()
+            print(f"   {r.status}  {p}")
+            conn.close()
+        except Exception as e:
+            print(f"   error {type(e).__name__}  {p}")
 
 
 def main():
@@ -111,6 +180,9 @@ def main():
         c7, j7 = api(path, {"rows": 3, "start": 0, "q": ""})
         o7 = objs_of(j7)
         print(f"   {c7}  {path}" + (f"  fields: {', '.join(sorted(o7[0]))[:300]}" if o7 and path != "/data/api/types/user" else ""))
+    stats_probe()
+    hits = sorted(k for k in SEEN if any(w in k.lower() for w in ("screen", "video", "recording")))
+    print("\n10. SCREEN AND RECORDING FIELDS seen anywhere above (field names only):", hits or "none")
     print("\nDone. Copy everything above into the chat.")
 
 
