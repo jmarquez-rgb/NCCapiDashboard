@@ -1,143 +1,7 @@
 {
-  "source": "api",
-  "updated_at": "2026-10-12T02:43:40+00:00",
+  "source": "api-partial",
+  "updated_at": "2026-10-12T02:49:52+00:00",
   "window_days": 30,
-  "kpis": {
-    "workitems": 637,
-    "connected": 0,
-    "abandoned_calls": 0,
-    "transferred_calls": 0,
-    "talk_avg_sec": null,
-    "hold_avg_sec": null,
-    "acw_avg_sec_capped": null,
-    "aht_mean_sec_capped": null,
-    "aht_median_sec": null,
-    "stuck_over_1h": 0
-  },
-  "coverage": [],
-  "wrap_by_summary": [],
-  "stuck_calls": [],
-  "termination_codes": [],
-  "recent_calls": [],
-  "channels": [
-    {
-      "channelType": "InboundCall",
-      "workitems": 444,
-      "abandoned": 0,
-      "transferred": 0,
-      "connected": 0,
-      "joined_workitems": 444,
-      "with_summary": 0,
-      "handle_avg_sec_capped": null
-    },
-    {
-      "channelType": "OutboundCall",
-      "workitems": 193,
-      "abandoned": 0,
-      "transferred": 0,
-      "connected": 0,
-      "joined_workitems": 193,
-      "with_summary": 0,
-      "handle_avg_sec_capped": null
-    },
-    {
-      "channelType": "InboundSMS",
-      "workitems": 61,
-      "abandoned": 0,
-      "transferred": 0,
-      "connected": 0,
-      "joined_workitems": 61,
-      "with_summary": 0,
-      "handle_avg_sec_capped": null
-    },
-    {
-      "channelType": "Chat",
-      "workitems": 28,
-      "abandoned": 0,
-      "transferred": 0,
-      "connected": 0,
-      "joined_workitems": 28,
-      "with_summary": 0,
-      "handle_avg_sec_capped": null
-    },
-    {
-      "channelType": "Email",
-      "workitems": 17,
-      "abandoned": 0,
-      "transferred": 0,
-      "connected": 0,
-      "joined_workitems": 17,
-      "with_summary": 0,
-      "handle_avg_sec_capped": null
-    },
-    {
-      "channelType": "PredictiveCall",
-      "workitems": 16,
-      "abandoned": 0,
-      "transferred": 0,
-      "connected": 0,
-      "joined_workitems": 16,
-      "with_summary": 0,
-      "handle_avg_sec_capped": null
-    },
-    {
-      "channelType": "OutboundEmail",
-      "workitems": 6,
-      "abandoned": 0,
-      "transferred": 0,
-      "connected": 0,
-      "joined_workitems": 6,
-      "with_summary": 0,
-      "handle_avg_sec_capped": null
-    },
-    {
-      "channelType": "OutboundSMS",
-      "workitems": 4,
-      "abandoned": 0,
-      "transferred": 0,
-      "connected": 0,
-      "joined_workitems": 4,
-      "with_summary": 0,
-      "handle_avg_sec_capped": null
-    },
-    {
-      "channelType": "PredictiveSMS",
-      "workitems": 4,
-      "abandoned": 0,
-      "transferred": 0,
-      "connected": 0,
-      "joined_workitems": 4,
-      "with_summary": 0,
-      "handle_avg_sec_capped": null
-    },
-    {
-      "channelType": "ProgressiveCall",
-      "workitems": 1,
-      "abandoned": 0,
-      "transferred": 0,
-      "connected": 0,
-      "joined_workitems": 1,
-      "with_summary": 0,
-      "handle_avg_sec_capped": null
-    }
-  ],
-  "agents": [
-    {
-      "agent_name": "No Agent",
-      "agent_login": "no.agent",
-      "workitems": 774,
-      "calls": 654,
-      "chats": 28,
-      "sms": 69,
-      "emails": 23,
-      "connected_calls": 0,
-      "transferred": 0,
-      "with_summary": 0,
-      "first_seen": "2026-09-03",
-      "last_seen": "2026-10-11",
-      "handle_avg_sec_capped": null
-    }
-  ],
   "agent_days": 30,
   "daily": [
     {
@@ -792,8 +656,10 @@
       "workitems": 1
     }
   ],
-  "dispositions": [],
   "ai_evals": [],
+  "notes": [
+    "The history record from the API does not carry: agents, channels, coverage, dispositions, kpis, recent_calls, stuck_calls, termination_codes, wrap_by_summary. Those sections keep their earlier values."
+  ],
   "users": [
     {
       "name": "Ian Landau",
