@@ -1,6 +1,6 @@
 {
   "source": "api-partial",
-  "updated_at": "2026-10-13T18:08:49+00:00",
+  "updated_at": "2026-10-13T23:15:27+00:00",
   "window_days": 30,
   "agent_days": 30,
   "daily": [
@@ -237,8 +237,8 @@
     },
     {
       "day": "2026-10-05",
-      "workitems": 59,
-      "voice": 52,
+      "workitems": 60,
+      "voice": 53,
       "dialer": 0,
       "chat": 4,
       "sms": 3,
@@ -314,10 +314,10 @@
     },
     {
       "day": "2026-10-13",
-      "workitems": 10,
-      "voice": 1,
-      "dialer": 0,
-      "chat": 8,
+      "workitems": 19,
+      "voice": 3,
+      "dialer": 3,
+      "chat": 12,
       "sms": 1,
       "email": 0,
       "survey": 0,
@@ -388,7 +388,7 @@
     {
       "dow": 2,
       "hour": 14,
-      "workitems": 6
+      "workitems": 7
     },
     {
       "dow": 2,
@@ -413,7 +413,7 @@
     {
       "dow": 3,
       "hour": 7,
-      "workitems": 51
+      "workitems": 52
     },
     {
       "dow": 3,
@@ -433,7 +433,7 @@
     {
       "dow": 3,
       "hour": 11,
-      "workitems": 8
+      "workitems": 9
     },
     {
       "dow": 3,
