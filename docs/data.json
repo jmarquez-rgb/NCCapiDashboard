@@ -1,6 +1,6 @@
 {
   "source": "api-partial",
-  "updated_at": "2026-10-12T20:14:22+00:00",
+  "updated_at": "2026-10-13T02:32:03+00:00",
   "window_days": 30,
   "agent_days": 30,
   "daily": [
@@ -314,8 +314,8 @@
     },
     {
       "day": "2026-10-12",
-      "workitems": 31,
-      "voice": 30,
+      "workitems": 46,
+      "voice": 45,
       "dialer": 0,
       "chat": 1,
       "sms": 0,
@@ -398,12 +398,12 @@
     {
       "dow": 2,
       "hour": 13,
-      "workitems": 32
+      "workitems": 45
     },
     {
       "dow": 2,
       "hour": 14,
-      "workitems": 4
+      "workitems": 6
     },
     {
       "dow": 2,
