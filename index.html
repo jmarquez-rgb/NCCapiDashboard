@@ -340,6 +340,19 @@ code{background:#F3F1EC;border-radius:5px;padding:1px 6px}
 .card.flat>.ct{padding:16px 18px 6px;margin:0}.card.flat>.cs{padding:0 18px 8px;margin:0}
 .fun .bar2{min-width:70px}.fun .st{grid-template-columns:130px 1fr 110px}
 .hbw .hb{grid-template-columns:300px 1fr 56px}
+
+/* what's new banner and flags */
+.flag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;line-height:1;padding:3px 7px;border-radius:999px;vertical-align:middle;white-space:nowrap}
+.flag.new{background:#E3F6EC;color:#13734B}
+.flag.ery{background:#EEE8FF;color:#5B3BB5}
+.card.wn{border-left:4px solid #8E7CC3;background:#FBFAFF;margin-bottom:14px}
+.wn-i{display:flex;gap:10px;align-items:flex-start;margin:9px 0}
+.wn-f{flex:none;min-width:112px}
+.ct h3 .flag{margin-left:6px}
+
+/* usage page date range */
+.dr input[type=date]{font:inherit;font-size:13px;padding:6px 9px;border:1px solid #D9D6CF;border-radius:9px;background:#fff;outline:0;color:inherit}
+.dr input[type=date]:focus{border-color:#8CB0EE;box-shadow:0 0 0 3px #E3EDFC}
 </style></head>
 <body>
 <div id="app"></div>
@@ -766,15 +779,36 @@ P.handle={title:'Channel Handle Time',sub:'Every channel and the contact center 
   ${card('Workitems left undispositioned (longest first)',table([{h:'Channel'},{h:'Campaign'},{h:'Disposition'},{h:'Hours open',cls:'r'}],st.map(x=>`<tr><td>${x.channelType?esc(x.channelType):'<span class="faint">-</span>'}</td><td>${esc(x.campaignName)}</td><td>${esc(x.dispositionName)}</td><td class="r b" style="color:#D4343A">${x.wrap_hours}</td></tr>`)),{cls:'flat'})}</div>`;
 }};
 /* ---------- Call Outcomes ---------- */
-P.outcomes={title:'Workitem Outcomes',sub:'All channels · last 30 days',body(){
-  const o=overall(),codes=pickList('termination_codes'),tot=sum(codes.map(c=>c.workitems)),h=o.handled;
-  const funnelRows=[{k:'Workitems, all channels',v:o.workitems,color:'linear-gradient(90deg,#5B8BBF,#8EB4DA)',note:'all'}];
-  if(h!=null)funnelRows.push({k:'Handled by an agent',v:h,color:'linear-gradient(90deg,#68BFBF,#9ED6D6)',note:f1(pctOf(h,o.workitems))+'%'});
-  funnelRows.push({k:'Abandoned',v:o.abandoned,color:'linear-gradient(90deg,#EA6C8B,#F2A4B7)',note:f1(pctOf(o.abandoned,o.workitems))+'%'});
-  return ovNote(o)+`<div class="g g4">${kpi('Workitems, all channels',fmtN(o.workitems),'every channel')}${kpi('Handled by an agent',h!=null?fmtN(h):'-',h!=null?f1(pctOf(h,o.workitems))+'% of workitems':'run the main query')}${kpi('Abandoned',fmtN(o.abandoned),f1(pctOf(o.abandoned,o.workitems))+'% of workitems',{cls:'bad'})}${kpi('Transferred',fmtN(o.transferred),'meaning not yet confirmed',{info:'transferred is 0 or 1 on DATA_WORKITEMS. It may include automatic transfers such as the IVR sending a call to an agent.'})}</div>
-  <div class="g g2">${card('From workitem to handled',funnel(funnelRows))}
-  ${card('How workitems ended (termination reason)',table([{h:'Code'},{h:'Workitems',cls:'r'},{h:'Abandoned',cls:'r'},{h:'Transferred',cls:'r'},{h:'Meaning'}],codes.map(c=>`<tr><td class="mono b">${esc(c.terminationReason)}</td><td class="r">${fmtN(c.workitems)}</td><td class="r">${c.abandoned_workitems}</td><td class="r">${c.transferred_workitems}</td><td class="muted sm">${String(c.terminationReason)==='6'?'Abandoned (every abandoned workitem has this code)':'Not yet confirmed'}</td></tr>`))+`<div class="xs muted mt">All channels, ${fmtN(tot)} workitems. Abandoned is a number of milliseconds waited, and transferred is 0 or 1.</div>`,{cls:'flat'})}</div>
-  ${h?note('Transferred workitems divided by handled workitems would read '+f1(pctOf(o.transferred,h))+'%. It is not yet confirmed what NCC counts as a transfer, so treat the transfer count as unverified.','warn'):''}`;
+ACT.outch=c=>{S.pg.out={ch:c||'All'};render(true)};
+const TERM={'1':'Customer','21':'Customer on hold','2':'Agent','24':'Agent on hold','22':'Agent hang up','23':'Agent hang up on hold','3':'Busy','4':'No answer','6':'Abandon','7':'Dialer abandon','8':'Dialer answering machine','9':'Dialer no answer','10':'Dialer unknown','11':'Dialer error','12':'Dialer fax','13':'Dialer busy','20':'Workflow','27':'Call dropped','5':'Error','-1':'Unknown','25':'Bad phone number (suggested label)','26':'Normal (suggested label)'};
+P.outcomes={title:'Workitem Outcomes',sub:'Each channel on its own, and all channels together · last 30 days',body(){
+  const chs=chans().filter(c=>(c.workitems||0)>0).slice().sort((a,b)=>b.workitems-a.workitems);
+  const o=overall(),sel0=(S.pg.out&&S.pg.out.ch)||'All',sel=(sel0==='All'||chs.some(c=>c.channelType===sel0))?sel0:'All';
+  const sm=(rs,k)=>rs.reduce((a,c)=>a+(+c[k]||0),0),rs=sel==='All'?chs:chs.filter(c=>c.channelType===sel);
+  const tot=sm(chs,'workitems'),hasConn=chs.some(c=>c.connected!=null);
+  const w=sm(rs,'workitems'),h=hasConn?sm(rs,'connected'):null,ab=sm(rs,'abandoned'),tr=sm(rs,'transferred'),lbl=sel==='All'?'All channels':sel;
+  const picker=`<div class="row wrap" style="gap:8px;margin-bottom:12px"><button class="btn sm ${sel==='All'?'pri':''}" ${A('outch','All')}>All channels</button>${chs.map(c=>`<button class="btn sm ${sel===c.channelType?'pri':''}" ${A('outch',c.channelType)}><span class="dot" style="background:${GCOL[groupOf(c.channelType)]};margin-right:6px"></span>${esc(c.channelType)}</button>`).join('')}</div>`;
+  const vrow=(label,sub,color,val,pw,share,on,arg)=>`<div ${A('outch',arg)} style="display:grid;grid-template-columns:230px 1fr 150px;gap:12px;align-items:center;padding:7px 10px;margin:2px 0;border-radius:9px;cursor:pointer;${on?'background:#EEF4FC;':''}"><div><span class="dot" style="background:${color};margin-right:8px"></span><b>${esc(label)}</b>${sub?`<div class="xs muted" style="margin-left:18px">${esc(sub)}</div>`:''}</div><div style="background:#F0EEE8;border-radius:6px;height:14px"><div style="width:${Math.max(0.6,pw)}%;background:${color};height:14px;border-radius:6px"></div></div><div style="text-align:right"><b>${fmtN(val)}</b> <span class="muted xs">${share}</span></div></div>`;
+  const volume=card('Workitem volume by channel · click one to focus '+flag('new','by channel'),vrow('All channels','every channel type','#5B8BBF',tot,100,'100%',sel==='All','All')+chs.map(c=>vrow(c.channelType,groupOf(c.channelType),GCOL[groupOf(c.channelType)],c.workitems,tot?c.workitems/tot*100:0,pc(c.workitems,tot),sel===c.channelType,c.channelType)).join('')+`<div class="xs muted mt">Each bar is that channel's share of all ${fmtN(tot)} workitems.</div>`);
+  const fr=[{k:'Workitems, '+lbl,v:w,color:'linear-gradient(90deg,#5B8BBF,#8EB4DA)',note:sel==='All'?'all':pc(w,tot)+' of all'}];
+  if(h!=null)fr.push({k:'Handled by an agent',v:h,color:'linear-gradient(90deg,#68BFBF,#9ED6D6)',note:pc(h,w)});
+  fr.push({k:'Abandoned',v:ab,color:'linear-gradient(90deg,#EA6C8B,#F2A4B7)',note:pc(ab,w)});
+  const tb=Array.isArray(D.termination_by_channel)?D.termination_by_channel:null;
+  let codes=null;
+  if(sel==='All')codes=pickList('termination_codes').map(c=>({code:String(c.terminationReason),workitems:c.workitems,ab:c.abandoned_workitems,tr:c.transferred_workitems}));
+  else if(tb){const m={};tb.filter(r=>r.channelType===sel).forEach(r=>{const k=String(r.terminationReason);m[k]=m[k]||{code:k,workitems:0,ab:0,tr:0};m[k].workitems+=+r.workitems||0;m[k].ab+=+r.abandoned_workitems||0;m[k].tr+=+r.transferred_workitems||0});codes=Object.values(m).sort((a,b)=>b.workitems-a.workitems)}
+  const ttot=codes?sm(codes,'workitems'):0;
+  const termCard=codes?card('How workitems ended · '+esc(lbl),table([{h:'Code'},{h:'Meaning'},{h:'Workitems',cls:'r'},{h:'Share',cls:'r'},{h:'Abandoned',cls:'r'},{h:'Transferred',cls:'r'}],codes.map(c=>`<tr><td class="mono b">${esc(c.code)}</td><td>${esc(TERM[c.code]||'Not yet confirmed')}</td><td class="r">${fmtN(c.workitems)}</td><td class="r">${pc(c.workitems,ttot)}</td><td class="r">${fmtN(c.ab)}</td><td class="r">${fmtN(c.tr)}</td></tr>`),{empty:'No workitems for this channel.'})+`<div class="xs muted mt">${fmtN(ttot)} workitems. Meanings come from NCC's own Agent Workitem Detail Report. Abandoned is milliseconds waited, and transferred is 0 or 1, on DATA_WORKITEMS.</div>`,{cls:'flat'}):card('How workitems ended · '+esc(lbl),`<div class="empty">Termination reasons by channel need the updated main query. Open <b>Data Sources</b>, copy the main query, run it in BigQuery, and paste the result.</div>`);
+  const fcol=(val,color,lab)=>`<div><div style="background:#F0EEE8;border-radius:6px;height:12px"><div style="width:${val==null||!tot?0:Math.max(val>0?0.6:0,val/tot*100)}%;background:${color};height:12px;border-radius:6px"></div></div><div class="xs" style="margin-top:3px">${val==null?'<span class="faint">-</span>':'<b>'+fmtN(val)+'</b> <span class="muted">'+lab+'</span>'}</div></div>`;
+  const frow=(label,sub,dot,c,bold,arg)=>`<div ${A('outch',arg)} style="display:grid;grid-template-columns:210px repeat(3,minmax(0,1fr));gap:18px;align-items:start;padding:8px 10px;margin:2px 0;border-radius:9px;cursor:pointer;${bold?'background:#F4F1EA;':''}"><div><span class="dot" style="background:${dot};margin-right:8px"></span><b>${esc(label)}</b>${sub?`<div class="xs muted" style="margin-left:18px">${esc(sub)}</div>`:''}</div>${fcol(c.workitems,'#5B8BBF',bold?'100%':pc(c.workitems,tot)+' of all')}${fcol(c.connected==null?null:c.connected,'#68BFBF',pc(c.connected,c.workitems))}${fcol(c.abandoned||0,'#EA6C8B',pc(c.abandoned||0,c.workitems))}</div>`;
+  const totObj={workitems:tot,connected:hasConn?sm(chs,'connected'):null,abandoned:sm(chs,'abandoned')};
+  const fhead=`<div style="display:grid;grid-template-columns:210px repeat(3,minmax(0,1fr));gap:18px;padding:0 10px 6px;border-bottom:1px solid #ECE9E2;margin-bottom:4px" class="xs muted"><div>Channel</div><div>Workitems (share of all)</div><div>Handled by an agent (% of channel)</div><div>Abandoned (% of channel)</div></div>`;
+  const byChan=card('From workitem to handled, channel by channel · click one to focus '+flag('new','by channel'),fhead+frow('All channels','every channel type','#5B8BBF',totObj,true,'All')+chs.map(c=>frow(c.channelType,groupOf(c.channelType),GCOL[groupOf(c.channelType)],c,false,c.channelType)).join('')+`<div class="xs muted mt">Every bar is on the same scale: the share of all ${fmtN(tot)} workitems.${hasConn?'':' Handled shows a dash until you run the main query.'}</div>`);
+  const tiles=`<div class="g g4">${kpi('Workitems, '+lbl,fmtN(w),sel==='All'?chs.length+' channel types':pc(w,tot)+' of all workitems')}${kpi('Handled by an agent',h!=null?fmtN(h):'-',h!=null?pc(h,w)+' of workitems':'run the main query')}${kpi('Abandoned',fmtN(ab),pc(ab,w)+' of workitems',{cls:'bad'})}${kpi('Transferred',fmtN(tr),'meaning not yet confirmed',{info:'transferred is 0 or 1 on DATA_WORKITEMS. It may include automatic transfers such as the IVR sending a call to an agent.'})}</div>`;
+  const rowC=c=>{const hc=c.connected;return `<tr class="rc" ${A('outch',c.channelType)}><td><b>${esc(c.channelType)}</b></td><td><span class="dot" style="background:${GCOL[groupOf(c.channelType)]};margin-right:6px"></span>${groupOf(c.channelType)}</td><td class="r">${fmtN(c.workitems)}</td><td class="r">${pc(c.workitems,tot)}</td><td class="r">${num(hc)}</td><td class="r">${hc!=null?pc(hc,c.workitems):'<span class="faint">-</span>'}</td><td class="r">${fmtN(c.abandoned||0)}</td><td class="r">${pc(c.abandoned||0,c.workitems)}</td><td class="r">${fmtN(c.transferred||0)}</td><td class="r">${pc(c.transferred||0,c.workitems)}</td></tr>`};
+  const totRow=`<tr style="font-weight:600;background:#FAF8F3"><td>All channels</td><td></td><td class="r">${fmtN(tot)}</td><td class="r">100%</td><td class="r">${hasConn?fmtN(sm(chs,'connected')):'-'}</td><td class="r">${hasConn?pc(sm(chs,'connected'),tot):'-'}</td><td class="r">${fmtN(sm(chs,'abandoned'))}</td><td class="r">${pc(sm(chs,'abandoned'),tot)}</td><td class="r">${fmtN(sm(chs,'transferred'))}</td><td class="r">${pc(sm(chs,'transferred'),tot)}</td></tr>`;
+  const cmp=card('Outcomes by channel, in numbers',table([{h:'Channel'},{h:'Group'},{h:'Workitems',cls:'r'},{h:'Share',cls:'r'},{h:'Handled',cls:'r'},{h:'Handled %',cls:'r'},{h:'Abandoned',cls:'r'},{h:'Abandon %',cls:'r'},{h:'Transferred',cls:'r'},{h:'Transfer %',cls:'r'}],chs.map(rowC).concat([totRow])),{cls:'flat'});
+  return picker+volume+tiles+(sel==='All'?byChan+termCard:`<div class="g g2">${card('From workitem to handled · '+esc(lbl),funnel(fr))}${termCard}</div>`)+cmp+((h&&tr)?note('Transferred workitems divided by handled workitems would read '+f1(tr/h*100)+'% for '+esc(lbl)+'. It is not yet confirmed what NCC counts as a transfer, so treat the transfer count as unverified.','warn'):'');
 }};
 /* ---------- AI Summary Quality ---------- */
 P.summary={title:'AI Summary',sub:'QA prompt output on handled workitems · all channels · last 30 days',body(){
@@ -970,6 +1004,18 @@ SELECT
       ) AS termination_codes,
       ARRAY(
         SELECT AS STRUCT
+          channelType,
+          terminationReason,
+          COUNT(*) AS workitems,
+          COUNTIF(abandoned > 0) AS abandoned_workitems,
+          COUNTIF(transferred > 0) AS transferred_workitems
+        FROM \`thrio-prod-4258998.4258998.DATA_WORKITEMS\`
+        WHERE _PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+        GROUP BY channelType, terminationReason
+        ORDER BY workitems DESC
+      ) AS termination_by_channel,
+      ARRAY(
+        SELECT AS STRUCT
           SUBSTR(d.id, 1, 8) AS workitem,
           d.channelType,
           ROUND(d.talkTime / 1000, 1) AS talk_sec,
@@ -1150,20 +1196,24 @@ const QAI=`SELECT
             COALESCE(
               CAST(ROUND(SAFE_CAST(REGEXP_EXTRACT(b.txt, r'Hybrid Score[^<]*</strong>\\s*([\\d.]+)') AS FLOAT64)) AS INT64),
               SAFE_CAST(REGEXP_EXTRACT(b.txt, r'>(\\d{1,3})</div>\\s*<div[^>]*>composite</div>') AS INT64),
+              CAST(ROUND(SAFE_CAST(REGEXP_EXTRACT(b.txt, r'Overall Score:?\\s*(?:</[a-zA-Z0-9]+>)?\\s*(\\d+)\\s*/\\s*16') AS INT64) / 16 * 100) AS INT64),
               CAST(ROUND(SAFE_CAST(REGEXP_EXTRACT(b.txt, r'Overall Score:</b>\\s*(\\d+)') AS INT64) / 16 * 100) AS INT64)
             ) AS composite,
             COALESCE(
               SAFE_CAST(REGEXP_EXTRACT(b.txt, r'ISDC Total[^<]*</strong>\\s*(\\d+)') AS INT64),
+              SAFE_CAST(REGEXP_EXTRACT(b.txt, r'Overall Score:?\\s*(?:</[a-zA-Z0-9]+>)?\\s*(\\d+)\\s*/\\s*16') AS INT64),
               SAFE_CAST(REGEXP_EXTRACT(b.txt, r'Overall Score:</b>\\s*(\\d+)') AS INT64)
             ) AS isdc_total,
             SAFE_CAST(REGEXP_EXTRACT(b.txt, r'ISDC Score[^<]*</strong>\\s*([\\d.]+)%') AS FLOAT64) AS isdc_pct,
             SAFE_CAST(REGEXP_EXTRACT(b.txt, r'MasseyCARE Score[^<]*</strong>\\s*([\\d.]+)%') AS FLOAT64) AS massey_pct,
             REGEXP_EXTRACT(b.txt, r'CriticalFailure:</strong>\\s*(YES|NO)') AS critical_failure,
+            REGEXP_CONTAINS(b.txt, r'insufficient transcript') AS has_insufficient_transcript,
+            TRIM(REGEXP_EXTRACT(b.txt, r'<b>HIPAA risk:</b>\\s*([^<]+)</p>')) AS hipaa_risk,
             REGEXP_EXTRACT(b.txt, r'font-size:42px;font-weight:700;color:#[0-9A-Fa-f]{6};line-height:1">([A-F])</span>') AS grade,
             TRIM(REGEXP_EXTRACT(b.txt, r'letter-spacing:0\\.1em;color:rgba\\(255,255,255,0\\.7\\);font-weight:600">([^<]+)</span>')) AS benchmark_label,
             IF(
-              ARRAY_LENGTH(REGEXP_EXTRACT_ALL(b.txt, r'<td><strong>(Care|Diligence|Skill|Integrity)</strong></td>')) > 0,
-              REGEXP_EXTRACT_ALL(b.txt, r'<td><strong>(Care|Diligence|Skill|Integrity)</strong></td>'),
+              ARRAY_LENGTH(REGEXP_EXTRACT_ALL(b.txt, r'<td><strong>(?:\\d\\.\\s*)?(Care|Diligence|Skill|Integrity)</strong></td>')) > 0,
+              REGEXP_EXTRACT_ALL(b.txt, r'<td><strong>(?:\\d\\.\\s*)?(Care|Diligence|Skill|Integrity)</strong></td>'),
               IF(
                 ARRAY_LENGTH(REGEXP_EXTRACT_ALL(b.txt, r'<span style="font-size:12px;font-weight:600">([^<]+)</span>')) > 0,
                 REGEXP_EXTRACT_ALL(b.txt, r'<span style="font-size:12px;font-weight:600">([^<]+)</span>'),
@@ -1174,8 +1224,8 @@ const QAI=`SELECT
               SELECT SAFE_CAST(x AS INT64)
               FROM UNNEST(
                 IF(
-                  ARRAY_LENGTH(REGEXP_EXTRACT_ALL(b.txt, r'<td><strong>(?:Care|Diligence|Skill|Integrity)</strong></td>\\s*<td>(\\d)</td>')) > 0,
-                  REGEXP_EXTRACT_ALL(b.txt, r'<td><strong>(?:Care|Diligence|Skill|Integrity)</strong></td>\\s*<td>(\\d)</td>'),
+                  ARRAY_LENGTH(REGEXP_EXTRACT_ALL(b.txt, r'<td><strong>(?:\\d\\.\\s*)?(?:Care|Diligence|Skill|Integrity)</strong></td>\\s*<td>(\\d)</td>')) > 0,
+                  REGEXP_EXTRACT_ALL(b.txt, r'<td><strong>(?:\\d\\.\\s*)?(?:Care|Diligence|Skill|Integrity)</strong></td>\\s*<td>(\\d)</td>'),
                   IF(
                     ARRAY_LENGTH(REGEXP_EXTRACT_ALL(b.txt, r'Score: (\\d)/4')) > 0,
                     REGEXP_EXTRACT_ALL(b.txt, r'Score: (\\d)/4'),
@@ -1190,18 +1240,42 @@ const QAI=`SELECT
               FROM UNNEST(REGEXP_EXTRACT_ALL(b.txt, r'Pillar [ISDC] Average: ([\\d.]+) / 5')) AS x
             ) AS massey_scores,
             COALESCE(
+              TRIM(REGEXP_EXTRACT(b.txt, r'LIVE_CONTACT_SENTIMENT:\\s*([A-Za-z]+)')),
+              TRIM(REGEXP_EXTRACT(REGEXP_EXTRACT(b.txt, r'(?s)(<b[^>]*>Customer</b>\\s*<span.*?)</td>'), r'<span[^>]*>[^A-Za-z]*([A-Za-z \\-]+)</span>')),
               TRIM(REGEXP_EXTRACT(b.txt, r'Customer Sentiment:</strong>\\s*<span[^>]*>([^<]+)</span>')),
               TRIM(REGEXP_EXTRACT(b.txt, r'(?:Patient|Customer|Caller)</span>\\s*<span[^>]*>([^<]+)</span>')),
               TRIM(REGEXP_EXTRACT(b.txt, r'<b>Customer:</b>\\s*([^<]+)'))
             ) AS customer_sentiment,
             COALESCE(
+              TRIM(REGEXP_EXTRACT(b.txt, r'LIVE_AGENT_SENTIMENT:\\s*([A-Za-z]+)')),
+              TRIM(REGEXP_EXTRACT(REGEXP_EXTRACT(b.txt, r'(?s)(<b[^>]*>Live Agent</b>\\s*<span.*?)</td>'), r'<span[^>]*>[^A-Za-z]*([A-Za-z \\-]+)</span>')),
               TRIM(REGEXP_EXTRACT(b.txt, r'Agent Sentiment:</strong>\\s*<span[^>]*>([^<]+)</span>')),
               TRIM(REGEXP_EXTRACT(b.txt, r'>Agent</span>\\s*<span[^>]*>([^<]+)</span>')),
               TRIM(REGEXP_EXTRACT(b.txt, r'<b>Agent:</b>\\s*([^<]+)'))
             ) AS agent_sentiment,
+            b.agentName AS agent,
+            COALESCE(b.aiContactSentiment, b.xbertSentiment) AS ai_contact_sentiment,
+            IF(b.aiContactSentiment IS NOT NULL, 'Bot at handoff', IF(b.xbertSentiment IS NOT NULL, 'Workflow label', NULL)) AS ai_contact_source,
+            SUBSTR(b.aiContactEvidence, 1, 160) AS ai_contact_evidence,
+            b.aiAgentSentiment AS ai_agent_sentiment,
+            SUBSTR(b.aiAgentEvidence, 1, 160) AS ai_agent_evidence,
+            SUBSTR(COALESCE(
+              TRIM(REGEXP_EXTRACT(b.txt, r'LIVE_CONTACT_SENTIMENT_EVIDENCE:\\s*([^<\\r\\n]+)')),
+              TRIM(REGEXP_REPLACE(REGEXP_EXTRACT(REGEXP_EXTRACT(b.txt, r'(?s)(<b[^>]*>Customer</b>\\s*<span.*?)</td>'), r'(?s)Evidence:</b>\\s*(.*?)</div>'), r'<[^>]+>', ' '))
+            ), 1, 160) AS live_contact_evidence,
+            SUBSTR(COALESCE(
+              TRIM(REGEXP_EXTRACT(b.txt, r'LIVE_AGENT_SENTIMENT_EVIDENCE:\\s*([^<\\r\\n]+)')),
+              TRIM(REGEXP_REPLACE(REGEXP_EXTRACT(REGEXP_EXTRACT(b.txt, r'(?s)(<b[^>]*>Live Agent</b>\\s*<span.*?)</td>'), r'(?s)Evidence:</b>\\s*(.*?)</div>'), r'<[^>]+>', ' '))
+            ), 1, 160) AS live_agent_evidence,
+            SUBSTR(TRIM(REGEXP_REPLACE(REGEXP_EXTRACT(REGEXP_EXTRACT(b.txt, r'(?s)(<b[^>]*>Customer</b>\\s*<span.*?)</td>'), r'(?s)Trajectory:</strong>\\s*(.*?)</div>'), r'<[^>]+>', ' ')), 1, 160) AS live_contact_trajectory,
+            SUBSTR(TRIM(REGEXP_REPLACE(REGEXP_EXTRACT(REGEXP_EXTRACT(b.txt, r'(?s)(<b[^>]*>Live Agent</b>\\s*<span.*?)</td>'), r'(?s)Trajectory:</strong>\\s*(.*?)</div>'), r'<[^>]+>', ' ')), 1, 160) AS live_agent_trajectory,
+            SAFE_CAST(REGEXP_EXTRACT(b.txt, r'LIVE AGENT ONLY</div><div[^>]*>\\s*([0-9.]+)\\s*%') AS FLOAT64) AS live_agent_score,
             SUBSTR(TRIM(REGEXP_EXTRACT(b.txt, r'<b>Reason:</b>\\s*([^<]+)</p>')), 1, 160) AS reason,
             TRIM(REGEXP_EXTRACT(b.txt, r'<b>Disposition:</b>\\s*([^<]+)</p>')) AS summary_disposition,
-            TRIM(REGEXP_EXTRACT(b.txt, r'<b>Type:</b>\\s*([^<]+)</p>')) AS interaction_type,
+            COALESCE(
+              TRIM(REGEXP_EXTRACT(b.txt, r'<b>Type:</b>\\s*([^<]+)</p>')),
+              TRIM(REGEXP_EXTRACT(b.txt, r'Interaction Type:</strong>\\s*([^<]+)</li>'))
+            ) AS interaction_type,
             REGEXP_EXTRACT_ALL(b.txt, r'font-size:12px;font-weight:700;color:#[0-9A-Fa-f]{6};margin-bottom:3px">([^<]+)</div>') AS coaching
           FROM (
             SELECT
@@ -1221,10 +1295,25 @@ const QAI=`SELECT
                 REGEXP_CONTAINS(JSON_VALUE(r.object, '$.data.qaRaw'), r'Hybrid Score|composite|Overall Score'),
                 'Post-call QA',
                 'Summary'
-              ) AS source
+              ) AS source,
+              COALESCE(NULLIF(u.userName, ''), JSON_VALUE(r.object, '$.agentUsername')) AS agentName,
+              IF(STARTS_WITH(JSON_VALUE(r.object, '$.data.aiContactSentiment'), 'workitem.'), NULL, JSON_VALUE(r.object, '$.data.aiContactSentiment')) AS aiContactSentiment,
+              IF(STARTS_WITH(JSON_VALUE(r.object, '$.data.aiContactSentimentEvidence'), 'workitem.'), NULL, JSON_VALUE(r.object, '$.data.aiContactSentimentEvidence')) AS aiContactEvidence,
+              IF(STARTS_WITH(JSON_VALUE(r.object, '$.data.aiAgentSentiment'), 'workitem.'), NULL, JSON_VALUE(r.object, '$.data.aiAgentSentiment')) AS aiAgentSentiment,
+              IF(STARTS_WITH(JSON_VALUE(r.object, '$.data.aiAgentSentimentEvidence'), 'workitem.'), NULL, JSON_VALUE(r.object, '$.data.aiAgentSentimentEvidence')) AS aiAgentEvidence,
+              IF(STARTS_WITH(JSON_VALUE(r.object, '$.data.sentiment'), 'workitem.'), NULL, JSON_VALUE(r.object, '$.data.sentiment')) AS xbertSentiment
             FROM \`thrio-prod-4258998.4258998.DATA_WORKITEMS\` AS d
             JOIN \`thrio-prod-4258998.4258998.REPORTS_WORKITEMS\` AS r
               ON r.callId = d.id
+            LEFT JOIN (
+              SELECT
+                workitemId,
+                userName
+              FROM \`thrio-prod-4258998.4258998.DATA_WORKITEMS_USERS\`
+              WHERE _PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+              QUALIFY ROW_NUMBER() OVER (PARTITION BY workitemId ORDER BY CAST(createdAt AS INT64) DESC) = 1
+            ) AS u
+              ON u.workitemId = d.id
             WHERE d._PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
               AND r._PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
           ) AS b
@@ -1244,7 +1333,8 @@ function parseTable(text){
   let head=split(lines[0]),skip=head[0]==='Row'?1:0;head=head.slice(skip);
   return lines.slice(1).map(l=>{const c=split(l).slice(skip),o={};head.forEach((h,i)=>{let v=c[i];if(v===undefined||v==='null'||v==='')v=null;else if(!isNaN(v)&&/^-?[\d.]+$/.test(v))v=+v;o[h]=v});return o}).filter(o=>Object.values(o).some(v=>v!==null));
 }
-function applyImports(){try{const t=localStorage.getItem('ncc_import_ai');if(t){const j=JSON.parse(t);if(j&&j.ai_evals&&j.ai_evals.length)D=Object.assign({},D,{ai_evals:j.ai_evals,qa_coverage:j.qa_coverage||null,imported_ai:true})}}catch(e){}
+function applyImports(){try{const t=localStorage.getItem('ncc_import_usage');if(t){const j=JSON.parse(t);if(j&&j.usage_rows&&j.usage_rows.length)D=Object.assign({},D,{usage:j})}}catch(e){}
+  try{const t=localStorage.getItem('ncc_import_ai');if(t){const j=JSON.parse(t);if(j&&j.ai_evals&&j.ai_evals.length)D=Object.assign({},D,{ai_evals:j.ai_evals,qa_coverage:j.qa_coverage||null,imported_ai:true})}}catch(e){}
   try{const t=localStorage.getItem('ncc_import_all');if(t&&!LIVE){const j=JSON.parse(t);if(j&&j.kpis){D=Object.assign({},SNAP,j,{snapshot:false});PASTED=true}}}catch(e){}
   ['channels','agents'].forEach(k=>{try{const t=localStorage.getItem('ncc_import_'+k);if(t){const j=JSON.parse(t);if(j&&j.length)D=Object.assign({},D,{[k]:j,['imported_'+k]:true})}}catch(e){}})}
 const importCard=(kind,why)=>card('Add the real '+(kind==='agents'?'agent':'channel')+' numbers',`<p class="muted sm" style="margin:-4px 0 10px">${why}</p><ol style="margin:0 0 10px;padding-left:20px;line-height:1.8"><li>Click <b>Copy query</b> and run it in BigQuery.</li><li>Select the results table, copy it, and paste it below.</li><li>Click <b>Show on dashboard</b>.</li></ol><pre class="mono" style="margin:0 0 10px;background:#F3F1EC;border-radius:10px;padding:12px;max-height:170px;overflow:auto;white-space:pre">${esc(QSQL[kind])}</pre><div class="row wrap" style="margin-bottom:10px"><button class="btn sm" ${A('impcopy',kind)}>${ico('copy','xs')} Copy query</button></div><textarea id="imp_${kind}" rows="5" placeholder="Paste the results table here" style="font-family:ui-monospace,Menlo,monospace;font-size:12px"></textarea><div class="row mt"><button class="btn pri sm" ${A('impshow',kind)}>Show on dashboard</button>${D['imported_'+kind]?`<button class="btn sm" ${A('impclear',kind)}>Remove pasted data</button>`:''}</div><div class="xs muted mt">Pasted results stay in this browser only. When the scheduled job works it supplies this data automatically.</div>`);
@@ -1309,7 +1399,8 @@ P.channels={title:'Channels',sub:'Voice, Dialer, Chat, SMS, Email and Survey · 
 /* ---------- AI Interactions ---------- */
 S.pg.ai=S.pg.ai||{f:'All',src:'All'};S.pg.ai.src=S.pg.ai.src||'All';
 ACT.aif=v=>{S.pg.ai.f=v;render(true)};ACT.aisrc=v=>{S.pg.ai.src=v;render(true)};
-const aiAll=()=>(D.ai_evals&&D.ai_evals.length)?D.ai_evals:SNAP.ai_evals;
+const aiPrep=a=>a.map(e=>(e.has_insufficient_transcript&&!e.composite)?Object.assign({},e,{composite:null,grade:null,benchmark_label:null,not_scored:true}):e);
+const aiAll=()=>aiPrep((D.ai_evals&&D.ai_evals.length)?D.ai_evals:SNAP.ai_evals);
 const aiIsSample=()=>!(D.ai_evals&&D.ai_evals.length);
 const aiGroup=n=>/IVA|^Xbert AI$/i.test(n||'')?'AI employee':/DTMF/i.test(n||'')?'DTMF menu':'Other';
 const sentGroup=t=>{const x=(t||'').toLowerCase();if(!x)return null;if(/very.?negative|frustrat|angry|upset|negative|concern|confus|annoy|disappoint|unresponsive|erratic/.test(x))return 'Negative';if(/neutral/.test(x))return 'Neutral';if(/positive|satisf|happy|pleased|grateful|receptive|engaged/.test(x))return 'Positive';return 'Neutral'};
@@ -1317,47 +1408,83 @@ const SCOL={Positive:'#2EA06F',Neutral:'#C9C5BC',Negative:'#EA6C8B'};
 const gradeCol=g=>({A:'#2EA06F',B:'#6AA84F',C:'#E0A63A',D:'#E8863A',F:'#D4343A'})[g]||'#9C9992';
 const avgOf=a=>a.length?sum(a)/a.length:0;
 const cleanTitle=t=>String(t||'').replace(/^\s*\d+\.\s*/,'');
+const ERY='Erykckson',SHOW_WHATS_NEW=true;
+const flag=(k,label)=>k==='ery'?`<span class="flag ery">From ${ERY}${label?': '+esc(label):''}</span>`:`<span class="flag new">New${label?': '+esc(label):''}</span>`;
+const hideNew=()=>{try{return localStorage.getItem('ncc_hide_new')==='1'}catch(e){return false}};
+ACT.wnhide=()=>{try{localStorage.setItem('ncc_hide_new','1')}catch(e){};render(true)};
+ACT.wnshow=()=>{try{localStorage.removeItem('ncc_hide_new')}catch(e){};render(true)};
+const sentStrict=t=>{const x=String(t||'').toLowerCase().trim();if(!x||/^(unknown|n\/a|none|not )/.test(x))return null;return sentGroup(x)};
+const whatsNew=()=>{
+  if(!SHOW_WHATS_NEW)return '';
+  if(hideNew())return `<div class="row" style="margin:0 0 10px"><button class="btn sm" ${A('wnshow')}>What's new in this version</button></div>`;
+  const it=(fl,t,d)=>`<div class="wn-i"><div class="wn-f">${fl}</div><div><b>${t}</b><div class="xs muted">${d}</div></div></div>`;
+  const N=flag('new'),E=flag('ery');
+  return `<section class="card wn"><div class="row" style="align-items:baseline;gap:10px;margin-bottom:4px"><h3 style="margin:0">What's new in this version</h3><span class="muted xs">Oct 14, 2026</span><span class="sp1"></span><button class="btn sm" ${A('wnhide')}>Hide</button></div>
+<div class="xs" style="margin-bottom:10px">Flags used on this page: ${N} we added it. ${E} an idea taken from ${ERY}'s report.</div>
+<div class="g g2"><div><h4 style="margin:0 0 4px">New in this build</h4>
+${it(N,'Post-call QA scores','Reads the result the Post Call QA function saves after the agent hangs up. Adds a Source filter and a Source column.')}
+${it(N,'Post-call QA coverage','Shows how many handled calls got a post-call score. Calls the customer ends are not covered yet.')}
+${it(N,'Hybrid score, ISDC, MasseyCARE, critical failures','New tile, pillar chart, and a scoring section on each score card.')}
+${it(N,'Not scored','When the AI says the transcript was too short, the call shows Not scored and stays out of the averages.')}
+${it(N,'AI-portion sentiment','Where a campaign workflow already saves a sentiment label on the workitem (today the Care, Shop, and Bank IVA campaigns, on conversations the AI kept), it is read from there. For Dialogflow bots it comes from what the bot reports at handoff, which still needs the bot setup.')}
+${it(N,'Workitem Outcomes by channel','Volume for every individual channel type, a picker that re-cuts the whole page for one channel, and how workitems ended for each channel. The per-channel endings need the updated main query.')}
+${it(N,'Usage page','Minutes, SMS, email and web chats by day and campaign, with a drill-down into one campaign. It reads the workitem table, so it works today.')}
+${it(N,'Smaller fixes','HIPAA risk row, empty Reason row hidden, and the ClearPath summary layout is now read.')}</div>
+<div><h4 style="margin:0 0 4px">From ${ERY}'s report</h4>
+${it(E,'Agent name on every conversation','Taken from the users table, latest row per call. Falls back to the username in the summary record.')}
+${it(E,'Live agent and customer sentiment split','Each side gets its own sentiment, the reason behind it, and the trajectory. Reads his layout and ours.')}
+${it(E,'Live agent score %','Shown on the score card when the prompt writes one.')}
+${it(E,'Also used in the NCC report file','Readable column names, a readable start time, agent name from the users table, and coaching kept out of the summary text.')}</div></div>
+<div class="xs muted" style="margin-top:10px"><b>Not in yet:</b> joining on id instead of callId to catch SMS (waiting on the check), billed SMS segments and emails replied on the Usage page (the billing usage tables are empty here), and the four LIVE_ sentiment lines in the QA prompt (until then, sentiment comes from the layouts we already read).</div></section>`;
+};
 P.ai={title:'QA and AI Score Cards',sub:'Scores from the post-call QA function and from the AI summary · last 30 days',body(){
   const all=aiAll(),f=S.pg.ai.f,src=S.pg.ai.src||'All',groupsN=['All','AI employee','DTMF menu','Other'],bySrc=e=>src==='All'||(e.source||'Summary')===src,rows=all.filter(e=>(f==='All'||aiGroup(e.campaignName)===f)&&bySrc(e));
-  const nQ=all.filter(e=>e.source==='Post-call QA').length,segS=[['All','All sources'],['Post-call QA','Post-call QA ('+nQ+')'],['Summary','Summary ('+(all.length-nQ)+')']],hasH=rows.some(e=>e.template==='hybrid'),cf=rows.filter(e=>e.critical_failure==='YES').length,mixed=src==='All'&&nQ>0&&all.length>nQ;
+  const nQ=all.filter(e=>e.source==='Post-call QA').length,segS=[['All','All sources'],['Post-call QA','Post-call QA ('+nQ+')'],['Summary','Summary ('+(all.length-nQ)+')']],hasH=rows.some(e=>e.template==='hybrid'),cf=rows.filter(e=>e.critical_failure==='YES').length,mixed=src==='All'&&nQ>0&&all.length>nQ,ns=rows.filter(e=>e.not_scored).length;
   const n=rows.length,sc=rows.map(e=>e.composite).filter(v=>v!=null),avg=avgOf(sc),lab=rows.filter(e=>e.benchmark_label),below=lab.filter(e=>/^below/i.test(e.benchmark_label)).length,tr=rows.filter(e=>e.transferred_to_agent).length,co=rows.filter(e=>(e.coaching||[]).length).length;
   const seg2=groupsN.map(g=>[g,g+' ('+(g==='All'?all.length:all.filter(e=>aiGroup(e.campaignName)===g).length)+')']);
-  const head=`${aiIsSample()?note('<b>Showing 2 real example evaluations.</b> Paste the AI query result at the bottom of this page to load up to 80 recent conversations.','warn'):''}<div class="row wrap">${seg(seg2,f,'aif')}${seg(segS,src,'aisrc')}<span class="sp1"></span><span class="muted sm">AI employee = campaigns named IVA or Xbert AI. DTMF menu = touch-tone IVR campaigns.</span></div>`;
+  const head=`${whatsNew()}${aiIsSample()?note('<b>Showing 2 real example evaluations.</b> Paste the AI query result at the bottom of this page to load up to 80 recent conversations.','warn'):''}<div class="row wrap">${seg(seg2,f,'aif')}${seg(segS,src,'aisrc')}${flag('new','Source filter')}<span class="sp1"></span><span class="muted sm">AI employee = campaigns named IVA or Xbert AI. DTMF menu = touch-tone IVR campaigns.</span></div>`;
   if(!n)return head+`<div class="card empty">No evaluations for this filter.</div>`+aiPasteCard();
-  const tiles=`<div class="g g5"${hasH?' style="grid-template-columns:repeat(6,1fr)"':''}>${kpi('Evaluated conversations',fmtN(n),'with an AI score card')}${kpi('Average score',sc.length?Math.round(avg):'-',(mixed?'out of 100, two scoring bases':'out of 100'),{cls:avg>=75?'':'bad'})}${kpi('Below benchmark',lab.length?pc(below,lab.length):'-',lab.length?below+' of '+lab.length+' labelled':'no labels yet',{cls:below?'bad':''})}${kpi('Passed to a person',pc(tr,n),tr+' of '+n+' conversations')}${kpi('With coaching tips',pc(co,n),co+' of '+n+' conversations')}${hasH?kpi('Critical failures',cf,'flagged YES by post-call QA',{cls:cf?'bad':''}):''}</div>`;
+  const tiles=`<div class="g g5"${hasH?' style="grid-template-columns:repeat(6,1fr)"':''}>${kpi('Evaluated conversations',fmtN(n),(ns?ns+' not scored, transcript too short':'with an AI score card'))}${kpi('Average score',sc.length?Math.round(avg):'-',(mixed?'out of 100, two scoring bases':'out of 100'),{cls:avg>=75?'':'bad'})}${kpi('Below benchmark',lab.length?pc(below,lab.length):'-',lab.length?below+' of '+lab.length+' labelled':'no labels yet',{cls:below?'bad':''})}${kpi('Passed to a person',pc(tr,n),tr+' of '+n+' conversations')}${kpi('With coaching tips',pc(co,n),co+' of '+n+' conversations')}${hasH?kpi('Critical failures',cf,'flagged YES by post-call QA',{cls:cf?'bad':''}):''}</div>`;
 
-  const qc=D.qa_coverage,covCard=qc?card('Post-call QA coverage, last 30 days',`<div class="g g4">${kpi('Handled inbound calls',fmtN(qc.handled),'talk time above zero')}${kpi('Ended by the agent',fmtN(qc.agent_ended),pc(qc.agent_ended,qc.handled)+' of handled calls')}${kpi('Ended by the customer',fmtN(qc.customer_ended),pc(qc.customer_ended,qc.handled)+' of handled calls')}${kpi('Scored after the call',fmtN(qc.scored),pc(qc.scored_agent_ended,qc.agent_ended)+' of agent-ended calls')}</div><div class="xs muted mt">Post-call QA runs when the agent hangs up. A call the customer ends is not scored this way, so it only has the score from the AI summary, if the summary includes one.</div>`):'';
-  const mp={};rows.forEach(e=>(e.massey_names||[]).forEach((k,i)=>{const v=(e.massey_scores||[])[i];if(v==null)return;const o=mp[k]=mp[k]||{s:0,c:0};o.s+=v;o.c++}));
+  const qc=D.qa_coverage,covCard=qc?card('Post-call QA coverage, last 30 days '+flag('new'),`<div class="g g4">${kpi('Handled inbound calls',fmtN(qc.handled),'talk time above zero')}${kpi('Ended by the agent',fmtN(qc.agent_ended),pc(qc.agent_ended,qc.handled)+' of handled calls')}${kpi('Ended by the customer',fmtN(qc.customer_ended),pc(qc.customer_ended,qc.handled)+' of handled calls')}${kpi('Scored after the call',fmtN(qc.scored),pc(qc.scored_agent_ended,qc.agent_ended)+' of agent-ended calls')}</div><div class="xs muted mt">Post-call QA runs when the agent hangs up. A call the customer ends is not scored this way, so it only has the score from the AI summary, if the summary includes one.</div>`):'';
+  const mp={};rows.filter(e=>!e.not_scored).forEach(e=>(e.massey_names||[]).forEach((k,i)=>{const v=(e.massey_scores||[])[i];if(v==null)return;const o=mp[k]=mp[k]||{s:0,c:0};o.s+=v;o.c++}));
   const MN={I:'Intake and intent',S:'Solution accuracy',D:'Delight and brand',C:'Compliance'};
-  const maCard=Object.keys(mp).length?card('MasseyCARE pillars (average, out of 5)',hbars(Object.entries(mp).map(([k,o])=>({k,v:o.s/o.c,color:o.s/o.c>=3?'#2EA06F':'#EA6C8B',label:`${esc(MN[k]||k)} <span class="muted xs">${o.c}</span>`,tip:`<b>${esc(MN[k]||k)}</b><br>${f1(o.s/o.c,2)} out of 5<br>${o.c} conversations`})),{max:5,fmt:v=>f1(v,1)+' / 5'})):'';
+  const maCard=Object.keys(mp).length?card('MasseyCARE pillars (average, out of 5) '+flag('new'),hbars(Object.entries(mp).map(([k,o])=>({k,v:o.s/o.c,color:o.s/o.c>=3?'#2EA06F':'#EA6C8B',label:`${esc(MN[k]||k)} <span class="muted xs">${o.c}</span>`,tip:`<b>${esc(MN[k]||k)}</b><br>${f1(o.s/o.c,2)} out of 5<br>${o.c} conversations`})),{max:5,fmt:v=>f1(v,1)+' / 5'})):'';
   const mixNote=mixed?note('<b>Two scoring bases.</b> Post-call QA scores are the Hybrid score (ISDC and MasseyCARE blended). Summary scores are ISDC alone. Use the source filter to compare like with like.','info'):'';
   const bins=Array.from({length:10},(_,i)=>({lo:i*10,hi:i*10+9,c:sc.filter(v=>v>=i*10&&(i===9?v<=100:v<=i*10+9)).length}));
   const hist=card('Score distribution',barChart({labels:bins.map(b=>b.lo+'-'+(b.hi===99?100:b.hi)),h:240,w:520,yTicks:4,groups:[{name:'Conversations',color:'#8E7CC3',colors:bins.map(b=>b.lo<50?'#EA6C8B':b.lo<70?'#F1BE4A':'#2EA06F'),data:bins.map(b=>b.c)}],tip:(g,i)=>`<b>Score ${bins[i].lo}-${bins[i].hi===99?100:bins[i].hi}</b><br>${bins[i].c} conversations`})+'<div class="xs muted" style="text-align:center">Red is under 50, amber 50 to 69, green 70 and up.</div>');
   const grades=['A','B','C','D','F'].map(g=>({g,c:rows.filter(e=>e.grade===g).length}));
   const gradeCard=card('Letter grades',grades.some(x=>x.c)?hbars(grades.map(x=>({k:x.g,v:x.c,color:gradeCol(x.g),label:`<b style="color:${gradeCol(x.g)}">${x.g}</b>`})),{fmt:v=>v})+`<div class="xs muted mt">${rows.filter(e=>!e.grade).length} conversations have no letter grade (the short layout and the post-call QA score do not have one).</div>`:'<div class="empty" style="padding:24px">No letter grades in these conversations.</div>');
-  const pm={};rows.forEach(e=>(e.pillar_names||[]).forEach((nm,i)=>{const v=(e.pillar_scores||[])[i];if(v==null)return;const o=pm[nm]=pm[nm]||{s:0,c:0};o.s+=v;o.c++}));
+  const pm={};rows.filter(e=>!e.not_scored).forEach(e=>(e.pillar_names||[]).forEach((nm,i)=>{const v=(e.pillar_scores||[])[i];if(v==null)return;const o=pm[nm]=pm[nm]||{s:0,c:0};o.s+=v;o.c++}));
   const pil=Object.entries(pm).map(([k,o])=>({k,v:o.s/o.c,c:o.c})).sort((a,b)=>a.v-b.v);
   const pilCard=card('Average score by pillar',pil.length?hbars(pil.map(p=>({k:p.k,v:p.v,color:p.v>=2.5?'#2EA06F':'#EA6C8B',label:`${esc(p.k)} <span class="muted xs">${p.c}</span>`,tip:`<b>${esc(p.k)}</b><br>${f1(p.v,2)} out of 4<br>${p.c} conversations`})),{max:4,target:2.5,fmt:v=>f1(v,1)+' / 4'})+'<div class="xs muted mt">Dark marker is 2.5, the per-pillar benchmark printed on the score card.</div>':'<div class="empty" style="padding:24px">No pillar scores found.</div>');
   const sg=(key)=>{const m={Positive:0,Neutral:0,Negative:0};rows.forEach(e=>{const g=sentGroup(e[key]);if(g)m[g]++});return m};
-  const cs=sg('customer_sentiment'),as=sg('agent_sentiment');
-  const sentCard=card('Sentiment in the AI summary',`<div class="g g2"><div><div class="b sm" style="text-align:center">Customer</div>${donut(Object.keys(cs).map(k=>({k,v:cs[k],color:SCOL[k]})),{size:140,thick:18,center:sum(Object.values(cs)),sub:'rated'})}</div><div><div class="b sm" style="text-align:center">Agent or AI</div>${donut(Object.keys(as).map(k=>({k,v:as[k],color:SCOL[k]})),{size:140,thick:18,center:sum(Object.values(as)),sub:'rated'})}</div></div>${legend(Object.keys(SCOL).map(k=>({name:k,color:SCOL[k]})))}<div class="xs muted" style="text-align:center">Grouped by keyword from the AI's own words.</div>`);
+  const okRows=rows.filter(e=>!e.not_scored);
+  const sgs=(key)=>{const m={Positive:0,Neutral:0,Negative:0};okRows.forEach(e=>{const g=sentStrict(e[key]);if(g)m[g]++});return m};
+  const sDonut=(t,m)=>{const tot=sum(Object.values(m));return `<div><div class="b sm" style="text-align:center">${t}</div>${tot?donut(Object.keys(m).map(k=>({k,v:m[k],color:SCOL[k]})),{size:116,thick:15,center:tot,sub:'rated'}):'<div class="empty" style="padding:34px 8px;font-size:12px">No data yet</div>'}</div>`};
+  const SCV={Positive:1,Neutral:0,Negative:-1},shift={Improved:0,Same:0,Worsened:0};
+  okRows.forEach(e=>{const a=sentStrict(e.ai_contact_sentiment),l=sentStrict(e.customer_sentiment);if(a&&l){const d=SCV[l]-SCV[a];shift[d>0?'Improved':d<0?'Worsened':'Same']++}});
+  const shN=sum(Object.values(shift));
+  const sentCard=card('Sentiment: AI portion and live portion '+flag('ery','live split')+' '+flag('new','AI portion'),`<div class="xs muted" style="margin:-4px 0 6px">Live portion is the transcript NCC keeps, which is the agent conversation. AI portion is the sentiment XBert or the bot saved on the workitem. Not every conversation has one, and a blank means none was saved.</div><div class="b sm" style="margin:6px 0 2px">AI portion</div><div class="g g2">${sDonut('Contact',sgs('ai_contact_sentiment'))}${sDonut('AI agent',sgs('ai_agent_sentiment'))}</div><div class="b sm" style="margin:12px 0 2px">Live portion</div><div class="g g2">${sDonut('Contact',sgs('customer_sentiment'))}${sDonut('Live agent',sgs('agent_sentiment'))}</div>${legend(Object.keys(SCOL).map(k=>({name:k,color:SCOL[k]})))}<div class="xs" style="text-align:center;margin-top:8px">${shN?`<b>Contact sentiment shift at handoff:</b> ${shift.Improved} improved, ${shift.Same} same, ${shift.Worsened} worsened (${shN} calls with both halves)`:'<span class="muted">The shift needs both halves. It starts once the bot reports sentiment at handoff.</span>'}</div>`);
   const cm={};rows.forEach(e=>{const o=cm[e.campaignName]=cm[e.campaignName]||{n:0,s:[],t:0};o.n++;if(e.composite!=null)o.s.push(e.composite);if(e.transferred_to_agent)o.t++});
   const campTbl=card('By campaign',table([{h:'Campaign'},{h:'Type'},{h:'Conversations',cls:'r'},{h:'Avg score',cls:'r'},{h:'Passed to a person',cls:'r'}],Object.entries(cm).sort((a,b)=>b[1].n-a[1].n).map(([k,o])=>`<tr><td class="b">${esc(k)}</td><td>${chip(aiGroup(k),aiGroup(k)==='AI employee'?'violet':aiGroup(k)==='DTMF menu'?'blue':'gray')}</td><td class="r">${o.n}</td><td class="r">${o.s.length?Math.round(avgOf(o.s)):'-'}</td><td class="r">${o.t} (${pc(o.t,o.n)})</td></tr>`)),{cls:'flat'});
-  const co2={};rows.forEach(e=>(e.coaching||[]).forEach(t=>{const k=cleanTitle(t);co2[k]=(co2[k]||0)+1}));
+  const co2={};rows.filter(e=>!e.not_scored).forEach(e=>(e.coaching||[]).forEach(t=>{const k=cleanTitle(t);co2[k]=(co2[k]||0)+1}));
   const coachCard=card('Top coaching themes',Object.keys(co2).length?hbars(Object.entries(co2).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k,v])=>({k,v,color:'#E0A63A',label:esc(k)})),{fmt:v=>v}):'<div class="empty" style="padding:24px">No coaching tips in these conversations.</div>');
-  const list=card('Latest conversations',table([{h:'Workitem'},{h:'Campaign'},{h:'Channel'},{h:'Source'},{h:'Score',cls:'r'},{h:'Grade'},{h:'Benchmark'},{h:'Customer'},{h:'Summary disposition'},{h:'Person?'}],rows.slice(0,25).map(e=>`<tr class="rc" ${A('aiq',e.workitem)}><td class="mono">${esc(e.workitem)}…</td><td>${esc(e.campaignName)}</td><td>${esc(e.channelType)}</td><td>${e.source==='Post-call QA'?chip('Post-call QA','violet'):chip('Summary','gray')}</td><td class="r b">${e.composite==null?'-':e.composite}</td><td>${e.grade?`<b style="color:${gradeCol(e.grade)}">${e.grade}</b>`:'<span class="faint">-</span>'}</td><td>${e.benchmark_label?chip(e.benchmark_label,/^below/i.test(e.benchmark_label)?'red':'green'):'<span class="faint">-</span>'}</td><td>${e.customer_sentiment?esc(e.customer_sentiment):'<span class="faint">-</span>'}</td><td>${e.summary_disposition?esc(e.summary_disposition):'<span class="faint">-</span>'}</td><td>${e.transferred_to_agent?chip('Yes','green'):chip('No','gray')}</td></tr>`)),{cls:'flat',right:'<span class="muted xs">Click a row for the full score card</span>'});
+  const list=card('Latest conversations '+flag('ery','Agent column'),table([{h:'Workitem'},{h:'Campaign'},{h:'Channel'},{h:'Agent'},{h:'Source'},{h:'Score',cls:'r'},{h:'Grade'},{h:'Benchmark'},{h:'Customer'},{h:'Summary disposition'},{h:'Person?'}],rows.slice(0,25).map(e=>`<tr class="rc" ${A('aiq',e.workitem)}><td class="mono">${esc(e.workitem)}…</td><td>${esc(e.campaignName)}</td><td>${esc(e.channelType)}</td><td>${e.agent?esc(e.agent):'<span class="faint">-</span>'}</td><td>${e.source==='Post-call QA'?chip('Post-call QA','violet'):chip('Summary','gray')}</td><td class="r b">${e.composite==null?'-':e.composite}</td><td>${e.grade?`<b style="color:${gradeCol(e.grade)}">${e.grade}</b>`:'<span class="faint">-</span>'}</td><td>${e.not_scored?chip('Not scored','amber'):e.benchmark_label?chip(e.benchmark_label,/^below/i.test(e.benchmark_label)?'red':'green'):'<span class="faint">-</span>'}</td><td>${e.customer_sentiment?esc(e.customer_sentiment):'<span class="faint">-</span>'}</td><td>${e.summary_disposition?esc(e.summary_disposition):'<span class="faint">-</span>'}</td><td>${e.transferred_to_agent?chip('Yes','green'):chip('No','gray')}</td></tr>`)),{cls:'flat',right:'<span class="muted xs">Click a row for the full score card</span>'});
   return head+mixNote+tiles+covCard+`<div class="g g3">${hist}${gradeCard}${pilCard}</div>${maCard}<div class="g g2">${sentCard}${coachCard}</div>${campTbl}${list}${aiPasteCard()}`;
 }};
 ACT.aiq=w=>{const e=aiAll().find(x=>x.workitem===w);if(!e)return;const names=e.pillar_names||[],scs=e.pillar_scores||[],bl=/^below/i.test(e.benchmark_label||'');
-  const hero=`<div class="card" style="background:linear-gradient(135deg,#1F3A5F 0%,#0F1226 100%);color:#fff;border:0"><div class="row" style="gap:18px;align-items:center"><div style="width:96px;height:96px;border-radius:50%;border:8px solid rgba(255,255,255,.15);border-top-color:${gradeCol(e.grade)};display:grid;place-items:center;text-align:center"><div><div style="font-size:30px;font-weight:700;line-height:1">${e.composite==null?'-':e.composite}</div><div style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;opacity:.7">score</div></div></div><div class="sp1"><div class="row" style="gap:10px;align-items:baseline"><span style="font-size:40px;font-weight:700;color:${gradeCol(e.grade)};line-height:1">${e.grade||'-'}</span><span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:.75;font-weight:600">${esc(e.benchmark_label||(e.template==='hybrid'?'Hybrid score':'no benchmark label'))}</span></div><div style="font-weight:600;margin:4px 0 2px">${esc(e.campaignName)}</div><div style="font-size:12px;opacity:.7">${esc(e.channelType)} · workitem ${esc(e.workitem)}…${e.talk_sec?' · '+dur(e.talk_sec)+' talk':''}</div></div>${(bl||e.critical_failure==='YES')?'<span class="chip c-red">Critical</span>':''}</div></div>`;
+  const hero=`<div class="card" style="background:linear-gradient(135deg,#1F3A5F 0%,#0F1226 100%);color:#fff;border:0"><div class="row" style="gap:18px;align-items:center"><div style="width:96px;height:96px;border-radius:50%;border:8px solid rgba(255,255,255,.15);border-top-color:${gradeCol(e.grade)};display:grid;place-items:center;text-align:center"><div><div style="font-size:30px;font-weight:700;line-height:1">${e.composite==null?'-':e.composite}</div><div style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;opacity:.7">score</div></div></div><div class="sp1"><div class="row" style="gap:10px;align-items:baseline"><span style="font-size:40px;font-weight:700;color:${gradeCol(e.grade)};line-height:1">${e.grade||'-'}</span><span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:.75;font-weight:600">${esc(e.not_scored?'Not enough transcript to score':(e.benchmark_label||(e.template==='hybrid'?'Hybrid score':'no benchmark label')))}</span></div><div style="font-weight:600;margin:4px 0 2px">${esc(e.campaignName)}</div><div style="font-size:12px;opacity:.7">${esc(e.channelType)} · workitem ${esc(e.workitem)}…${e.talk_sec?' · '+dur(e.talk_sec)+' talk':''}</div></div>${(bl||e.critical_failure==='YES')?'<span class="chip c-red">Critical</span>':''}</div></div>`;
 
   const MN2={I:'Intake and intent',S:'Solution accuracy',D:'Delight and brand',C:'Compliance'},mn=e.massey_names||[],ms=e.massey_scores||[];
   const hy=e.template==='hybrid'?card('Scoring detail',`<div class="lst">${[['Hybrid score',e.composite==null?null:e.composite+' of 100'],['ISDC',e.isdc_total==null?null:e.isdc_total+' of 16'+(e.isdc_pct==null?'':' ('+f1(e.isdc_pct,1)+'%)')],['MasseyCARE',e.massey_pct==null?null:f1(e.massey_pct,1)+' of 100'],['Critical failure',e.critical_failure]].map(r=>`<div class="li"><span class="muted sm" style="min-width:150px">${r[0]}</span><span class="sp1">${r[1]?(r[0]==='Critical failure'?chip(r[1],r[1]==='YES'?'red':'green'):esc(r[1])):'<span class="faint">-</span>'}</span></div>`).join('')}</div>`)+(mn.length?card('MasseyCARE pillars',mn.map((k,i)=>{const v=ms[i]==null?0:ms[i];return `<div style="margin:10px 0"><div class="row sm"><b class="sp1">${esc(MN2[k]||k)}</b><span>${v} of 5</span></div><div class="pbar ${v>=3?'good':'bad'}"><i style="width:${v/5*100}%"></i></div></div>`}).join('')):''):'';
   const pil=names.length?card('Pillars',names.map((nm,i)=>{const v=scs[i]==null?0:scs[i];return `<div style="margin:10px 0"><div class="row sm"><b class="sp1">${esc(nm)}</b><span>${v} of 4</span></div><div style="position:relative"><div class="pbar ${v>=2.5?'good':'bad'}"><i style="width:${v/4*100}%"></i></div><span style="position:absolute;left:62.5%;top:-3px;bottom:-3px;width:2px;background:#1B1B1B;opacity:.5"></span></div></div>`}).join('')+'<div class="xs muted">Marker at 2.5, the per-pillar benchmark.</div>'):'';
-  const sent=card('Sentiment',`<div class="row wrap">${e.customer_sentiment?`<span class="chip" style="background:${SCOL[sentGroup(e.customer_sentiment)]}33">Customer: ${esc(e.customer_sentiment)}</span>`:''}${e.agent_sentiment?`<span class="chip" style="background:${SCOL[sentGroup(e.agent_sentiment)]}33">Agent or AI: ${esc(e.agent_sentiment)}</span>`:''}</div>`);
-  const sum2=card('Summary',`<div class="lst">${[['Reason',e.reason],['Disposition in summary',e.summary_disposition],['Interaction type',e.interaction_type],['Passed to a person',e.transferred_to_agent?'Yes':'No']].map(r=>`<div class="li"><span class="muted sm" style="min-width:150px">${r[0]}</span><span class="sp1">${r[1]?esc(r[1]):'<span class="faint">-</span>'}</span></div>`).join('')}</div>`);
+  const sRow=(lab,v,ev,tr)=>{const g=sentStrict(v);return `<div class="li" style="align-items:flex-start"><span class="muted sm" style="min-width:110px">${lab}</span><span class="sp1">${v?`<span class="chip" style="background:${g?SCOL[g]+'33':'#eee'}">${esc(v)}</span>`:'<span class="faint">-</span>'}${ev?`<div class="xs muted" style="margin-top:3px">${esc(ev)}</div>`:''}${tr?`<div class="xs muted">Trajectory: ${esc(tr)}</div>`:''}</span></div>`};
+  const SCV2={Positive:1,Neutral:0,Negative:-1},ga=sentStrict(e.ai_contact_sentiment),gl=sentStrict(e.customer_sentiment),shiftTxt=(ga&&gl)?({'1':'Improved','0':'Same','-1':'Worsened'})[String(Math.sign(SCV2[gl]-SCV2[ga]))]:null;
+  const sent=card('Sentiment '+flag('ery','live split')+' '+flag('new','AI portion'),`<div class="lst">${sRow('AI contact',e.ai_contact_sentiment,e.ai_contact_evidence||(e.ai_contact_source==='Workflow label'?'Read from the sentiment label the campaign workflow saved on the workitem':''))}${sRow('AI agent',e.ai_agent_sentiment,e.ai_agent_evidence)}${sRow('Live contact',e.customer_sentiment,e.live_contact_evidence,e.live_contact_trajectory)}${sRow('Live agent',e.agent_sentiment,e.live_agent_evidence,e.live_agent_trajectory)}${shiftTxt?`<div class="li"><span class="muted sm" style="min-width:110px">Shift</span><span class="sp1"><b>${shiftTxt}</b> <span class="muted xs">contact sentiment, AI portion to live portion</span></span></div>`:''}</div>`);
+  const sum2=card('Summary',`<div class="lst">${[...(e.agent?[['Agent',e.agent]]:[]),...(e.reason||e.source!=='Post-call QA'?[['Reason',e.reason]]:[]),['Disposition in summary',e.summary_disposition],['Interaction type',e.interaction_type],...(e.hipaa_risk?[['HIPAA risk',e.hipaa_risk]]:[]),...(e.live_agent_score!=null?[['Live agent score',f1(e.live_agent_score,1)+'%']]:[]),['Passed to a person',e.transferred_to_agent?'Yes':'No']].map(r=>`<div class="li"><span class="muted sm" style="min-width:150px">${r[0]}</span><span class="sp1">${r[1]?esc(r[1]):'<span class="faint">-</span>'}</span></div>`).join('')}</div>`);
   const coach=(e.coaching||[]).length?card('Coaching opportunities',`<div class="lst">${e.coaching.map(t=>`<div class="li"><span class="chip c-amber">Tip</span><span class="sp1">${esc(cleanTitle(t))}</span></div>`).join('')}</div>`):'';
-  drawer('AI score card',hero+hy+pil+sent+sum2+coach+note(e.source==='Post-call QA'?'This is the post-call QA output saved by the Post Call QA function in REPORTS_WORKITEMS (object, $.data.qaRaw). The text above is read from it with patterns.':'The score card is the Gemini QA prompt output stored in REPORTS_WORKITEMS (object, $.summary). The text above is read from it with patterns.'),{sub:esc(e.campaignName)+' · '+esc(e.workitem)+'…',wide:false})};
+  drawer('AI score card',hero+(e.not_scored?note('<b>Not a real score.</b> The AI said the transcript was too short to judge this call. The 0 and F in the stored text are left out, and this call is not counted in the averages or charts.','warn'):'')+hy+(e.not_scored?'':pil)+sent+sum2+(e.not_scored?'':coach)+note(e.source==='Post-call QA'?'This is the post-call QA output saved by the Post Call QA function in REPORTS_WORKITEMS (object, $.data.qaRaw). The text above is read from it with patterns.':'The score card is the Gemini QA prompt output stored in REPORTS_WORKITEMS (object, $.summary). The text above is read from it with patterns.'),{sub:esc(e.campaignName)+' · '+esc(e.workitem)+'…',wide:false})};
 /* ---------- Agents ---------- */
 const aname=n=>/^no agent$/i.test(n)?'No agent (IVR or system)':n;
 const fmtDay=d=>{if(!d)return '-';try{return new Date(String(d).slice(0,10)+'T12:00:00').toLocaleDateString([], {month:'short',day:'numeric',year:'2-digit'})}catch(e){return String(d)}};
@@ -1372,6 +1499,113 @@ function rosterCard(){
 S.pg.ag=S.pg.ag||{q:''};
 ACT.agq=v=>{S.pg.ag.q=v;refresh('agtbl')};
 const agRows=()=>{const q=(S.pg.ag.q||'').toLowerCase().trim(),a=agentsList();return q?a.filter(x=>((x.agent_name||'')+' '+(x.agent_login||'')).toLowerCase().includes(q)):a};
+
+const QUSG=`/* NCC usage drill-down data for the dashboard: one JSON cell, last 90 days, by day and campaign (Phoenix time) */
+WITH workitems AS (
+  SELECT
+    id AS workitemId,
+    COALESCE(campaignName, '') AS campaign,
+    channelType,
+    createdAt,
+    GREATEST(COALESCE(terminatedAt, createdAt) - createdAt, 0) AS durationMs,
+    COALESCE(talkTime, 0) AS talkMs,
+    COALESCE(consumerMessageCount, 0) AS consumerMessages,
+    COALESCE(agentMessageCount, 0) AS agentMessages,
+    COALESCE(botMessageCount, 0) AS botMessages,
+    COALESCE(smsConsumerMessageCount, 0) + COALESCE(smsAgentMessageCount, 0) + COALESCE(smsBotMessageCount, 0) AS smsMessages,
+    COALESCE(smsAgentMessageCount, 0) AS smsAgentMessages,
+    CASE
+      WHEN channelType IN ('InboundCall', 'OutboundCall', 'InboundExtensionCall', 'OutboundExtensionCall', 'PredictiveCall', 'PreviewCall', 'ProgressiveCall') THEN 'Voice'
+      WHEN channelType IN ('InboundSMS', 'OutboundSMS') THEN 'SMS'
+      WHEN channelType IN ('Email', 'OutboundEmail') THEN 'Email'
+      WHEN channelType = 'Chat' THEN 'Chat'
+      ELSE 'Other'
+    END AS channelGroup,
+    channelType IN ('InboundCall', 'InboundExtensionCall') AS isInbound,
+    (channelType = 'OutboundCall' AND terminationReason = 20 AND COALESCE(talkTime, 0) = 0) AS isAiLeg
+  FROM \`thrio-prod-4258998.4258998.DATA_WORKITEMS\`
+  WHERE _PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 93 DAY)
+    AND createdAt >= UNIX_MILLIS(TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 90 DAY))
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY id ORDER BY terminatedAt DESC) = 1
+),
+
+daily AS (
+  SELECT
+    FORMAT_DATE('%Y-%m-%d', DATE(TIMESTAMP_MILLIS(createdAt), 'America/Phoenix')) AS day,
+    campaign,
+    COUNTIF(channelGroup = 'Voice' AND NOT isAiLeg AND isInbound) AS inbound_calls,
+    COUNTIF(channelGroup = 'Voice' AND NOT isAiLeg AND NOT isInbound) AS outbound_calls,
+    ROUND(SUM(IF(channelGroup = 'Voice' AND NOT isAiLeg AND isInbound AND durationMs <= 14400000, durationMs, 0)) / 60000, 1) AS inbound_minutes,
+    ROUND(SUM(IF(channelGroup = 'Voice' AND NOT isAiLeg AND NOT isInbound AND durationMs <= 14400000, durationMs, 0)) / 60000, 1) AS outbound_minutes,
+    ROUND(SUM(IF(channelGroup = 'Voice' AND NOT isAiLeg, talkMs, 0)) / 60000, 1) AS connected_minutes,
+    COUNTIF(channelGroup = 'Voice' AND NOT isAiLeg AND durationMs > 14400000) AS calls_over_4h,
+    COUNTIF(isAiLeg) AS ai_leg_calls,
+    ROUND(SUM(IF(isAiLeg AND durationMs <= 14400000, durationMs, 0)) / 60000, 1) AS ai_leg_minutes,
+    COUNTIF(channelGroup = 'SMS') AS sms_conversations,
+    SUM(IF(channelGroup = 'SMS', smsMessages, 0)) AS sms_messages,
+    COUNTIF(channelGroup = 'SMS' AND smsAgentMessages > 0) AS sms_replied,
+    SUM(IF(channelGroup = 'SMS', smsAgentMessages, 0)) AS sms_agent_replies,
+    COUNTIF(channelType = 'Email') AS emails_in,
+    COUNTIF(channelType = 'OutboundEmail') AS emails_out,
+    COUNTIF(channelGroup = 'Chat') AS chats,
+    COUNTIF(channelGroup = 'Chat' AND consumerMessages > 0) AS chats_with_customer,
+    COUNTIF(channelGroup = 'Chat' AND agentMessages > 0) AS chats_replied_agent,
+    COUNTIF(channelGroup = 'Chat' AND botMessages > 0) AS chats_replied_bot
+  FROM workitems
+  GROUP BY day, campaign
+)
+
+SELECT
+  TO_JSON_STRING(
+    STRUCT(
+      FORMAT_TIMESTAMP('%m/%d/%Y %H:%M', CURRENT_TIMESTAMP(), 'America/Phoenix') AS updated_at,
+      ARRAY(SELECT AS STRUCT * FROM daily ORDER BY day DESC, campaign) AS usage_rows
+    )
+  ) AS usage_json
+`;
+ACT.impcopyusage=()=>{try{navigator.clipboard.writeText(QUSG);toast('Usage query copied')}catch(e){toast('Select the query and copy it by hand','bad')}};
+ACT.impusage=()=>{const j=cellJson(($('#imp_usage')||{}).value||'');if(!j||!j.usage_rows||!j.usage_rows.length){toast('That does not look like the usage query result. Copy the whole result cell.','bad');return}
+  try{localStorage.setItem('ncc_import_usage',JSON.stringify(j))}catch(e){}D=Object.assign({},D,{usage:j});render(true);toast(j.usage_rows.length+' usage rows loaded')};
+ACT.impusageclear=()=>{try{localStorage.removeItem('ncc_import_usage')}catch(e){}D=Object.assign({},D,{usage:null});render(true);toast('Usage numbers cleared')};
+ACT.usagewin=v=>{S.pg.usage=Object.assign({win:30,camp:''},S.pg.usage||{},{win:+v,from:'',to:''});render(true)};
+ACT.usagerange=()=>{const f=($('#us_from')||{}).value||'',t=($('#us_to')||{}).value||'';if(!f||!t){toast('Pick both a start date and an end date','bad');return}if(f>t){toast('The start date must be on or before the end date','bad');return}S.pg.usage=Object.assign({win:30,camp:''},S.pg.usage||{},{from:f,to:t});render(true)};
+ACT.usagecamp=c=>{S.pg.usage=Object.assign({win:30,camp:''},S.pg.usage||{},{camp:c||''});render(true)};
+const usagePasteCard=()=>card('Load the usage numbers (no key needed)',`<p class="muted" style="margin:-2px 0 12px;font-size:15px">This query adds up minutes, SMS, email and web chats by day and campaign for the last 90 days.</p><ol style="margin:0 0 12px;padding-left:22px;line-height:2;font-size:15px"><li>Click the blue <b>Copy usage query</b> button.</li><li>Open <b>BigQuery</b>. Click the <b>+</b> for a new tab.</li><li>Press <b>Ctrl</b> and <b>V</b> to paste. Click <b>Run</b>.</li><li>Click <b>Save results</b>. Then <b>Copy to clipboard</b>.</li><li>Come back here. Click the box below. Press <b>Ctrl</b> and <b>V</b>.</li><li>Click <b>Show usage</b>.</li></ol><div class="row wrap" style="margin-bottom:10px"><button class="btn pri" ${A('impcopyusage')}>${ico('copy','sm')} Copy usage query</button></div><textarea id="imp_usage" rows="4" placeholder="Paste here" style="font-family:ui-monospace,Menlo,monospace;font-size:12px"></textarea><div class="row mt"><button class="btn pri" ${A('impusage')}>Show usage</button>${D.usage?`<button class="btn" ${A('impusageclear')}>Clear usage numbers</button>`:''}</div><div class="xs muted mt">Your paste stays in this browser only. It is not sent anywhere.</div>`);
+P.usage={title:'Usage',sub:'Minutes, SMS, email and web chat · by day and campaign · up to 90 days',body(){
+  const U=D.usage;
+  if(!U||!U.usage_rows||!U.usage_rows.length)return card('Usage '+flag('new'),`<div class="empty">No usage numbers are loaded yet. Follow the steps below to load them.</div>`)+usagePasteCard();
+  const st=Object.assign({win:30,camp:'',from:'',to:''},S.pg.usage||{});
+  const all=U.usage_rows,days=[...new Set(all.map(r=>r.day))].sort(),last=days[days.length-1];
+  const addD=(d,n)=>{const x=new Date(d+'T00:00:00Z');x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10)};
+  const first=days[0],custom=!!(st.from&&st.to),end=custom?st.to:last,start=custom?st.from:addD(last,-(st.win-1)),inWin=all.filter(r=>r.day>=start&&r.day<=end);
+  const dStart=start<first?first:start,dEnd=end>last?last:end;
+  const rows=st.camp?inWin.filter(r=>r.campaign===st.camp):inWin;
+  const sm=(rs,k)=>rs.reduce((a,r)=>a+(+r[k]||0),0),T=k=>sm(rows,k);
+  const calls=T('inbound_calls')+T('outbound_calls'),totMin=T('inbound_minutes')+T('outbound_minutes'),conMin=T('connected_minutes');
+  const smsC=T('sms_conversations'),smsR=T('sms_replied'),emIn=T('emails_in'),emOut=T('emails_out'),ch=T('chats');
+  const tiles=`<div class="g g3">${kpi('Voice calls',fmtN(calls),`${fmtN(T('inbound_calls'))} inbound · ${fmtN(T('outbound_calls'))} outbound`)}${kpi('Total minutes',fmtN(totMin),(T('calls_over_4h')?fmtN(T('calls_over_4h'))+' call'+(T('calls_over_4h')>1?'s':'')+' over 4 hours left out':'time from start to hang-up'),{info:'Start to hang-up for every voice call. Any call open for more than 4 hours is left out, because it is almost always a call that never closed.'})}${kpi('Connected minutes',fmtN(conMin),totMin?f1(conMin/totMin*100)+'% of total minutes':'-',{info:'Talk time with an agent. The rest is menu, queue, and hold time.'})}${kpi('SMS messages',fmtN(T('sms_messages')),`${fmtN(smsC)} conversations · ${fmtN(smsR)} replied${smsC?' ('+Math.round(smsR/smsC*100)+'%)':''}`,{info:'Messages counted from customer, agent and bot. Replied means an agent sent at least one message.'})}${kpi('Emails',fmtN(emIn+emOut),`${fmtN(emIn)} in · ${fmtN(emOut)} out`)}${kpi('Web chats',fmtN(ch),`${fmtN(T('chats_with_customer'))} with a customer message · ${fmtN(T('chats_replied_agent'))} agent · ${fmtN(T('chats_replied_bot'))} bot`,{info:'Agent and bot replies are counted separately. One chat can have both.'})}</div>`;
+  const dl=[];for(let d=dStart;d<=dEnd;d=addD(d,1))dl.push(d);
+  const byDay=d=>rows.filter(r=>r.day===d),lab=dl.map(d=>d.slice(5)),ev=Math.max(1,Math.ceil(dl.length/12));
+  const dTot=dl.map(d=>sm(byDay(d),'inbound_minutes')+sm(byDay(d),'outbound_minutes')),dCon=dl.map(d=>sm(byDay(d),'connected_minutes'));
+  const voiceChart=!dl.length?'':card('Voice minutes per day',lineChart({labels:lab,w:900,h:250,xEvery:ev,smooth:false,dots:false,yFmt:v=>fmtN(v),series:[{name:'Total minutes',color:'#5B8BBF',data:dTot,area:true},{name:'Connected minutes',color:'#68BFBF',data:dCon}],tip:i=>`<b>${esc(dl[i])}</b><br>Total: <b>${f1(dTot[i])}</b> min<br>Connected: <b>${f1(dCon[i])}</b> min<br>Calls: ${fmtN(sm(byDay(dl[i]),'inbound_calls')+sm(byDay(dl[i]),'outbound_calls'))}`})+legend([{name:'Total minutes',color:'#5B8BBF',sq:1},{name:'Connected minutes',color:'#68BFBF',sq:1}]));
+  const gS=dl.map(d=>sm(byDay(d),'sms_conversations')),gC=dl.map(d=>sm(byDay(d),'chats')),gE=dl.map(d=>sm(byDay(d),'emails_in')+sm(byDay(d),'emails_out'));
+  const msgChart=!dl.length?'':card('SMS, web chats and email per day',barChart({labels:lab,stacked:true,w:900,h:250,xEvery:ev,groups:[{name:'SMS conversations',color:GCOL.SMS,data:gS},{name:'Web chats',color:GCOL.Chat,data:gC},{name:'Emails',color:GCOL.Email,data:gE}],tip:(g,i)=>`<b>${esc(dl[i])}</b><br>SMS conversations: ${gS[i]}<br>Web chats: ${gC[i]}<br>Emails: ${gE[i]}`})+legend([{name:'SMS conversations',color:GCOL.SMS,sq:1},{name:'Web chats',color:GCOL.Chat,sq:1},{name:'Emails',color:GCOL.Email,sq:1}]));
+  const n1=v=>fmtN(v),m1=v=>f1(v,1);
+  const aiNote=(T('ai_leg_calls')>0)?`<div class="xs muted" style="margin:12px 2px 14px">Not counted above: ${fmtN(T('ai_leg_calls'))} AI hand-off legs (${fmtN(T('ai_leg_minutes'))} min). Each call passed to a Dialogflow bot starts a second, outbound workitem. Billing may count those minutes.</div>`:'';
+  let tbl;
+  if(!st.camp){
+    const by={};inWin.forEach(r=>{(by[r.campaign]=by[r.campaign]||[]).push(r)});
+    const lines=Object.keys(by).map(c=>{const rs=by[c],g=k=>sm(rs,k);return {c,calls:g('inbound_calls')+g('outbound_calls'),tm:g('inbound_minutes')+g('outbound_minutes'),cm:g('connected_minutes'),sc:g('sms_conversations'),sg:g('sms_messages'),sr:g('sms_replied'),em:g('emails_in')+g('emails_out'),ch:g('chats'),ca:g('chats_replied_agent'),cb:g('chats_replied_bot')}}).sort((a,b)=>(b.calls+b.sc+b.em+b.ch)-(a.calls+a.sc+a.em+a.ch));
+    tbl=card('By campaign · click one to drill in',table([{h:'Campaign'},{h:'Calls',cls:'r'},{h:'Total min',cls:'r'},{h:'Connected min',cls:'r'},{h:'SMS conv.',cls:'r'},{h:'SMS msgs',cls:'r'},{h:'SMS replied',cls:'r'},{h:'Emails',cls:'r'},{h:'Web chats',cls:'r'},{h:'Agent replies',cls:'r'},{h:'Bot replies',cls:'r'}],lines.map(l=>`<tr class="rc" ${A('usagecamp',l.c)}><td><b>${esc(l.c||'(no campaign)')}</b></td><td class="r">${n1(l.calls)}</td><td class="r">${m1(l.tm)}</td><td class="r">${m1(l.cm)}</td><td class="r">${n1(l.sc)}</td><td class="r">${n1(l.sg)}</td><td class="r">${n1(l.sr)}</td><td class="r">${n1(l.em)}</td><td class="r">${n1(l.ch)}</td><td class="r">${n1(l.ca)}</td><td class="r">${n1(l.cb)}</td></tr>`),{empty:'No usage in this window.'}),{cls:'flat'});
+  }else{
+    tbl=card(esc(st.camp)+' · day by day',table([{h:'Date'},{h:'Calls in',cls:'r'},{h:'Calls out',cls:'r'},{h:'Total min',cls:'r'},{h:'Connected min',cls:'r'},{h:'SMS conv.',cls:'r'},{h:'SMS msgs',cls:'r'},{h:'SMS replied',cls:'r'},{h:'Emails in',cls:'r'},{h:'Emails out',cls:'r'},{h:'Web chats',cls:'r'},{h:'Agent',cls:'r'},{h:'Bot',cls:'r'}],dl.slice().reverse().filter(d=>byDay(d).length).map(d=>{const g=k=>sm(byDay(d),k);return `<tr><td>${esc(d)}</td><td class="r">${n1(g('inbound_calls'))}</td><td class="r">${n1(g('outbound_calls'))}</td><td class="r">${m1(g('inbound_minutes')+g('outbound_minutes'))}</td><td class="r">${m1(g('connected_minutes'))}</td><td class="r">${n1(g('sms_conversations'))}</td><td class="r">${n1(g('sms_messages'))}</td><td class="r">${n1(g('sms_replied'))}</td><td class="r">${n1(g('emails_in'))}</td><td class="r">${n1(g('emails_out'))}</td><td class="r">${n1(g('chats'))}</td><td class="r">${n1(g('chats_replied_agent'))}</td><td class="r">${n1(g('chats_replied_bot'))}</td></tr>`}),{empty:'No usage for this campaign in this window.'}),{cls:'flat'});
+  }
+  const vFrom=start<first?first:(start>last?last:start),vTo=end>last?last:(end<first?first:end);
+  const head=`<div class="row wrap dr" style="margin-bottom:6px;align-items:center;gap:12px">${seg([[7,'7 days'],[14,'14 days'],[30,'30 days'],[90,'90 days']],custom?0:st.win,'usagewin')}<span class="muted xs">or pick dates</span><input type="date" id="us_from" value="${esc(vFrom)}" min="${esc(first)}" max="${esc(last)}" aria-label="Start date"><span class="muted xs">to</span><input type="date" id="us_to" value="${esc(vTo)}" min="${esc(first)}" max="${esc(last)}" aria-label="End date"><button class="btn sm pri" ${A('usagerange')}>Apply</button>${custom?'<span class="chip">Custom range</span>':''}${flag('new','Usage page')}</div><div class="row wrap" style="margin-bottom:12px;align-items:center;gap:12px">${st.camp?`<span class="chip">${esc(st.camp)}</span><button class="btn sm" ${A('usagecamp','')}>Show all campaigns</button>`:`<span class="muted xs">${rows.length?fmtN(new Set(inWin.map(r=>r.campaign)).size)+' campaigns':'No usage in this range'}</span>`}<span class="sp1"></span><span class="muted xs">Data as of ${esc(U.updated_at||'')} · showing ${esc(start)} to ${esc(end)} · data runs ${esc(first)} to ${esc(last)}</span></div>`;
+  const notes=card('How to read these numbers',`<ul style="margin:0;padding-left:20px;line-height:1.9;font-size:14px"><li><b>Total minutes</b> are start to hang-up. Calls open more than 4 hours are left out and counted in the tile note.</li><li><b>Connected minutes</b> are talk time with an agent.</li><li><b>Replied</b> means an agent sent a message. Bot replies are shown apart for web chats.</li><li><b>Not here yet:</b> billed SMS segments and emails replied. The billing usage tables are empty on this tenant.</li><li>These are operating numbers. They will not match an invoice exactly.</li></ul>`);
+  if(!dl.length||!inWin.length)return head+card('No usage in this range',`<div class="empty">There is no usage between ${esc(start)} and ${esc(end)}. The data runs from ${esc(first)} to ${esc(last)}.</div>`)+notes+usagePasteCard();
+  return head+tiles+aiNote+voiceChart+msgChart+tbl+notes+usagePasteCard();
+}};
 P.agents={title:'Agents',sub:'Everyone who handled at least one workitem in the window',body(){
   const a=agentsList();
   if(!a.length)return `<div class="card"><div class="empty"><div style="display:flex;justify-content:center">${ico('users','')}</div><div class="b" style="margin-top:8px;font-size:16px">No agent data loaded yet</div><div class="muted sm" style="max-width:56ch;margin:6px auto 0">Agents come from REPORTS_WORKITEMS (the agent username inside the workitem). We have not pulled them yet, and none of the numbers here are made up. Run the query below to load the real ones.</div></div></div>`+rosterCard()+importCard('agents','Agent names are made from the username, for example derek.gray+superagent@nextiva.com becomes Derek Gray. The query looks back 730 days so it catches everyone.');
@@ -1387,14 +1621,14 @@ ACT.agentd=v=>{const[n,l]=String(v).split('|'),x=agentsList().find(y=>y.agent_na
 const CHG_COL=GCOL;
 /* ---------- Data Sources ---------- */
 P.sources={title:'Data Sources',sub:'Where every number comes from, and what is not here',body(){
-  const rows=[['Post-call QA score card','REPORTS_WORKITEMS','object, $.data.qaRaw: written by the Post Call QA function after the agent hangs up. Read with patterns (Hybrid score, ISDC, MasseyCARE, critical failure)'],['Post-call QA coverage','DATA_WORKITEMS and REPORTS_WORKITEMS','handled inbound calls by terminationReason (2, 22, 23, 24 = agent ended; 1, 21 = customer ended) against calls that have a score in $.data.qaRaw'],['Workitems by channel','DATA_WORKITEMS','COUNT(*) grouped by channelType (11 types seen)'],['Channel groups','n/a','Voice = InboundCall, OutboundCall. Dialer = PredictiveCall, ProgressiveCall, PredictiveSMS. SMS = InboundSMS, OutboundSMS. Chat, Email (Email, OutboundEmail) and Survey stand alone'],['Abandoned','DATA_WORKITEMS','COUNTIF(abandoned > 0). abandoned is milliseconds waited'],['Transferred','DATA_WORKITEMS','COUNTIF(transferred > 0). Meaning not yet confirmed'],['Handled workitems','DATA_WORKITEMS','COUNTIF(talkTime > 0). Time connected to an agent, on any channel'],['Handle time, each channel and overall','DATA_WORKITEMS','AVG(talkTime + holdTime + wrapupTime) for handled workitems with wrapupTime of 1 hour or less. The same formula for every channel. The overall row averages all of them'],['Median and 90th percentile','DATA_WORKITEMS','APPROX_QUANTILES of the same handle time, for each channel and overall'],['AI summary','REPORTS_WORKITEMS','object column, JSON path $.summary, joined on REPORTS_WORKITEMS.callId = DATA_WORKITEMS.id'],['Summary layout','REPORTS_WORKITEMS','Text match on the summary: Overall Score means short, composite means long'],['Agent','REPORTS_WORKITEMS','object path $.agentUsername, shown as first and last name'],['Customer sentiment','REPORTS_WORKITEMS','Text between the Customer label and the next break in the summary'],['AI score card (composite, grade, pillars, coaching)','REPORTS_WORKITEMS','Read from the summary HTML: composite score, letter grade, pillar scores out of 4, sentiment, reason, disposition, coaching titles'],['Daily volume, busiest hours, dispositions','DATA_WORKITEMS','COUNT(*) by createdAt day and hour (Arizona time) and by dispositionName']];
+  const rows=[['Workitem Outcomes by channel','DATA_WORKITEMS','One row per channel type: workitems, handled (talk time above zero), abandoned, transferred. Termination reasons per channel come from the updated main query.'],['Usage page','DATA_WORKITEMS','Voice minutes (start to hang-up, calls over 4 hours left out), talk time, and SMS, email and chat message counts, by day and campaign'],['Agent name on score cards','DATA_WORKITEMS_USERS','userName, latest row per workitem (an idea from '+ERY+'s report); falls back to $.agentUsername'],['AI-portion sentiment','REPORTS_WORKITEMS','object, $.data.sentiment (a label some campaign workflows save) or $.data.aiContactSentiment and aiAgentSentiment (set by a Dialogflow bot at handoff and saved by the Webhook state)'],['Post-call QA score card','REPORTS_WORKITEMS','object, $.data.qaRaw: written by the Post Call QA function after the agent hangs up. Read with patterns (Hybrid score, ISDC, MasseyCARE, critical failure)'],['Post-call QA coverage','DATA_WORKITEMS and REPORTS_WORKITEMS','handled inbound calls by terminationReason (2, 22, 23, 24 = agent ended; 1, 21 = customer ended) against calls that have a score in $.data.qaRaw'],['Workitems by channel','DATA_WORKITEMS','COUNT(*) grouped by channelType (11 types seen)'],['Channel groups','n/a','Voice = InboundCall, OutboundCall. Dialer = PredictiveCall, ProgressiveCall, PredictiveSMS. SMS = InboundSMS, OutboundSMS. Chat, Email (Email, OutboundEmail) and Survey stand alone'],['Abandoned','DATA_WORKITEMS','COUNTIF(abandoned > 0). abandoned is milliseconds waited'],['Transferred','DATA_WORKITEMS','COUNTIF(transferred > 0). Meaning not yet confirmed'],['Handled workitems','DATA_WORKITEMS','COUNTIF(talkTime > 0). Time connected to an agent, on any channel'],['Handle time, each channel and overall','DATA_WORKITEMS','AVG(talkTime + holdTime + wrapupTime) for handled workitems with wrapupTime of 1 hour or less. The same formula for every channel. The overall row averages all of them'],['Median and 90th percentile','DATA_WORKITEMS','APPROX_QUANTILES of the same handle time, for each channel and overall'],['AI summary','REPORTS_WORKITEMS','object column, JSON path $.summary, joined on REPORTS_WORKITEMS.callId = DATA_WORKITEMS.id'],['Summary layout','REPORTS_WORKITEMS','Text match on the summary: Overall Score means short, composite means long'],['Agent','REPORTS_WORKITEMS','object path $.agentUsername, shown as first and last name'],['Customer sentiment','REPORTS_WORKITEMS','Text between the Customer label and the next break in the summary'],['AI score card (composite, grade, pillars, coaching)','REPORTS_WORKITEMS','Read from the summary HTML: composite score, letter grade, pillar scores out of 4, sentiment, reason, disposition, coaching titles'],['Daily volume, busiest hours, dispositions','DATA_WORKITEMS','COUNT(*) by createdAt day and hour (Arizona time) and by dispositionName']];
   const hidden=[['Service level, queue wait','Needs a threshold and queue data that are not in these tables yet.'],['Live conversations and alerts','BigQuery only has a call after it is dispositioned.'],['CSAT, NPS and QA scores','No survey or scorecard tables pulled yet.'],['SMS summaries and agents','SMS workitems did not match REPORTS_WORKITEMS on callId, so they are missing from agent and summary numbers.'],['Forecast, staffing, adherence','Come from WFM, not these tables.'],['Handle time when talk time is empty','A channel with no talk time recorded falls back to time open (workitemTime), shown on its own scale.']];
   return pasteAllCard()+aiPasteCard()+card('How each number is calculated',table([{h:'Number'},{h:'Table'},{h:'How'}],rows.map(r=>`<tr><td class="b">${r[0]}</td><td class="mono">${r[1]}</td><td class="muted sm">${r[2]}</td></tr>`)),{cls:'flat'})
   +`<div class="g g2">${card('Refresh status',`<dl class="kv"><dt>Source</dt><dd>${LIVE?chip(srcWord(),'green'):PASTED?chip('Pasted from BigQuery','green'):chip('Snapshot','amber')}</dd><dt>As of</dt><dd>${when()}</dd><dt>Window</dt><dd>Last ${D.window_days||30} days</dd><dt>Project</dt><dd class="mono">thrio-prod-4258998</dd><dt>Dataset</dt><dd class="mono">4258998</dd><dt>Refresh</dt><dd>${LIVE?(D.source==='api'?'Every hour by GitHub Action (NCC API)':'Every 30 minutes by GitHub Action (BigQuery)'):PASTED?'By hand: paste a fresh result when you want new numbers':'Manual until the scheduled job can read BigQuery'}</dd><dt>Pasted data</dt><dd>${[D.imported_channels?'channels':'',D.imported_agents?'agents':'',D.imported_ai?'AI evaluations':''].filter(Boolean).join(', ')||'none'}</dd></dl>${(D.errors&&D.errors.length)?note('Some queries failed on the last run and are showing snapshot values: '+esc(D.errors.join('; ')),'warn'):''}`)}
   ${card('Not on this dashboard on purpose',`<div class="lst">${hidden.map(h=>`<div class="li"><div class="sp1"><div class="b">${h[0]}</div><div class="muted xs">${h[1]}</div></div></div>`).join('')}</div>`)}</div>`;
 }};
 /* ---------- shell ---------- */
-const NAVN=[{t:'Dashboards',icon:'gauge',items:[['overview','Overview'],['channels','Channels'],['agents','Agents'],['ai','QA / AI Score Cards'],['handle','Channel Handle Time'],['outcomes','Outcomes'],['summary','AI Summary']]},{t:'Data',icon:'db',items:[['sources','Data Sources']]}];
+const NAVN=[{t:'Dashboards',icon:'gauge',items:[['overview','Overview'],['channels','Channels'],['agents','Agents'],['ai','QA / AI Score Cards'],['handle','Channel Handle Time'],['usage','Usage'],['outcomes','Outcomes'],['summary','AI Summary']]},{t:'Data',icon:'db',items:[['sources','Data Sources']]}];
 function shell(){
   $('#app').innerHTML=`<nav class="rail" aria-label="Primary"><svg class="logo" viewBox="0 0 32 32" aria-label="Nextiva"><path d="M7 6c5 0 6.5 4 9 8 2.5 4 4 8 9 8M25 6c-5 0-6.5 4-9 8-2.5 4-4 8-9 8" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round"/></svg><a class="on" role="button" aria-label="Analytics">${ico('chart')}<span>Analytics</span></a></nav>
   <div class="right"><header class="top"><h1 class="serif" style="font-size:19px;margin:0">NCC Contact Center</h1><span class="chip c-gray" id="srcchip"></span><span class="sp"></span><button class="btn sm" ${A('refresh')}>${ico('refresh','sm')} Refresh</button><span class="avatar">JM</span></header>
