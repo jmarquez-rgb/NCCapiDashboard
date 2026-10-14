@@ -1,6 +1,6 @@
 {
   "source": "api-partial",
-  "updated_at": "2026-10-14T15:02:57+00:00",
+  "updated_at": "2026-10-14T19:18:14+00:00",
   "window_days": 30,
   "agent_days": 30,
   "daily": [
@@ -325,11 +325,11 @@
     },
     {
       "day": "2026-10-14",
-      "workitems": 7,
-      "voice": 5,
-      "dialer": 2,
-      "chat": 0,
-      "sms": 0,
+      "workitems": 29,
+      "voice": 12,
+      "dialer": 3,
+      "chat": 5,
+      "sms": 9,
       "email": 0,
       "survey": 0,
       "abandoned": 0
@@ -484,12 +484,12 @@
     {
       "dow": 4,
       "hour": 8,
-      "workitems": 6
+      "workitems": 7
     },
     {
       "dow": 4,
       "hour": 9,
-      "workitems": 7
+      "workitems": 8
     },
     {
       "dow": 4,
@@ -499,12 +499,12 @@
     {
       "dow": 4,
       "hour": 11,
-      "workitems": 24
+      "workitems": 27
     },
     {
       "dow": 4,
       "hour": 12,
-      "workitems": 18
+      "workitems": 20
     },
     {
       "dow": 4,
@@ -1040,6 +1040,11 @@
     {
       "name": "Connor Admin",
       "login": "connor.williams+superadmin2",
+      "active": true
+    },
+    {
+      "name": "Jason Barry",
+      "login": "jason.barry+superagent",
       "active": true
     }
   ]
