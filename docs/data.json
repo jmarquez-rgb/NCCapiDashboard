@@ -1,6 +1,6 @@
 {
   "source": "api-partial",
-  "updated_at": "2026-10-14T10:03:54+00:00",
+  "updated_at": "2026-10-14T15:02:57+00:00",
   "window_days": 30,
   "agent_days": 30,
   "daily": [
@@ -322,6 +322,17 @@
       "email": 0,
       "survey": 0,
       "abandoned": 0
+    },
+    {
+      "day": "2026-10-14",
+      "workitems": 7,
+      "voice": 5,
+      "dialer": 2,
+      "chat": 0,
+      "sms": 0,
+      "email": 0,
+      "survey": 0,
+      "abandoned": 0
     }
   ],
   "hourly": [
@@ -468,7 +479,7 @@
     {
       "dow": 4,
       "hour": 7,
-      "workitems": 8
+      "workitems": 13
     },
     {
       "dow": 4,
