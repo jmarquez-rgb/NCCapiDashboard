@@ -1,0 +1,49 @@
+name: Refresh demo data
+
+on:
+  schedule:
+    - cron: '7 * * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'refresh (default) or explore (prints response shapes only)'
+        default: 'refresh'
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the files
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Explore the NCC API (shapes only)
+        if: ${{ github.event.inputs.mode == 'explore' }}
+        env:
+          NCC_TOKEN: ${{ secrets.NCC_TOKEN }}
+          NCC_BASE_URL: ${{ vars.NCC_BASE_URL }}
+        run: python scripts/api_explore.py
+
+      - name: Pull from the NCC API
+        if: ${{ github.event.inputs.mode != 'explore' }}
+        env:
+          NCC_TOKEN: ${{ secrets.NCC_TOKEN }}
+          NCC_BASE_URL: ${{ vars.NCC_BASE_URL }}
+          WINDOW_DAYS: '30'
+        run: python scripts/pull_api.py
+
+      - name: Save the numbers
+        if: ${{ github.event.inputs.mode != 'explore' }}
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add docs/data.json
+          git diff --cached --quiet || git commit -m "Refresh data"
+          git push
