@@ -1,0 +1,226 @@
+/* NCC Operational Pulse data for the dashboard: one JSON cell, last 60 days, Phoenix time */
+WITH days AS (
+  SELECT
+    day,
+    UNIX_MILLIS(TIMESTAMP(day, 'America/Phoenix')) AS startMs,
+    UNIX_MILLIS(TIMESTAMP(DATE_ADD(day, INTERVAL 1 DAY), 'America/Phoenix')) AS endMs
+  FROM UNNEST(
+    GENERATE_DATE_ARRAY(
+      DATE_SUB(CURRENT_DATE('America/Phoenix'), INTERVAL 59 DAY),
+      CURRENT_DATE('America/Phoenix')
+    )
+  ) AS day
+),
+
+status_rows AS (
+  SELECT
+    userName,
+    createdAt,
+    COALESCE(terminatedAt, createdAt) AS endAt,
+    CASE
+      WHEN statusName IN ('Available', 'Working', 'Wrapup') THEN 'online'
+      WHEN STARTS_WITH(statusName, 'Working - ') THEN 'offqueue'
+      WHEN STARTS_WITH(statusName, 'Meeting') OR STARTS_WITH(statusName, 'Training') THEN 'meeting'
+      WHEN statusName IN ('Break', 'Restroom', 'Lunch') THEN 'break'
+      WHEN statusName IN ('Busy', 'No Answer') THEN 'busy'
+      WHEN statusName = 'Login' THEN 'login'
+      ELSE 'other'
+    END AS cat
+  FROM `thrio-prod-4258998.4258998.DATA_USERS_STATUS`
+  WHERE _PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 63 DAY)
+    AND createdAt >= UNIX_MILLIS(TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 61 DAY))
+    AND COALESCE(statusName, '') != 'Logout'
+),
+
+user_day AS (
+  SELECT
+    day,
+    userName,
+    SUM(IF(cat = 'online', ms, 0)) AS online_ms,
+    SUM(IF(cat = 'offqueue', ms, 0)) AS offqueue_ms,
+    SUM(IF(cat = 'busy', ms, 0)) AS busy_ms,
+    SUM(IF(cat = 'meeting', ms, 0)) AS meeting_ms,
+    SUM(IF(cat = 'break', ms, 0)) AS break_ms,
+    SUM(IF(cat = 'login', ms, 0)) AS login_ms,
+    SUM(IF(cat = 'other', ms, 0)) AS other_ms,
+    SUM(ms) AS gross_ms
+  FROM (
+    SELECT
+      d.day,
+      s.userName,
+      s.cat,
+      GREATEST(0, LEAST(s.endAt, d.endMs) - GREATEST(s.createdAt, d.startMs)) AS ms
+    FROM days AS d
+    JOIN status_rows AS s
+      ON s.createdAt < d.endMs
+     AND s.endAt > d.startMs
+  )
+  GROUP BY day, userName
+),
+
+agent_leg AS (
+  SELECT
+    workitemId,
+    userName
+  FROM `thrio-prod-4258998.4258998.DATA_WORKITEMS_USERS`
+  WHERE _PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 63 DAY)
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY workitemId ORDER BY CAST(createdAt AS INT64) DESC) = 1
+),
+
+workitems AS (
+  SELECT
+    id AS workitemId,
+    DATE(TIMESTAMP_MILLIS(createdAt), 'America/Phoenix') AS day,
+    REGEXP_REPLACE(COALESCE(NULLIF(campaignName, ''), '(no program)'), r'\s+-\s+.*$', '') AS program,
+    channelType IN ('InboundCall', 'OutboundCall', 'InboundExtensionCall', 'OutboundExtensionCall', 'PredictiveCall', 'PreviewCall', 'ProgressiveCall') AS isVoice,
+    COALESCE(talkTime, 0) AS talkMs
+  FROM `thrio-prod-4258998.4258998.DATA_WORKITEMS`
+  WHERE _PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 63 DAY)
+    AND createdAt >= UNIX_MILLIS(TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 61 DAY))
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY id ORDER BY terminatedAt DESC) = 1
+),
+
+agent_counts AS (
+  SELECT
+    l.userName,
+    w.program,
+    COUNT(*) AS n
+  FROM workitems AS w
+  JOIN agent_leg AS l
+    ON l.workitemId = w.workitemId
+  WHERE w.talkMs > 0
+    AND l.userName IS NOT NULL
+  GROUP BY l.userName, w.program
+),
+
+agent_program AS (
+  SELECT
+    userName,
+    program
+  FROM agent_counts
+  WHERE TRUE
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY userName ORDER BY n DESC, program) = 1
+),
+
+day_time AS (
+  SELECT
+    day,
+    COUNTIF(online_ms > 0) AS active_agents,
+    SUM(gross_ms) AS gross_ms,
+    SUM(online_ms) AS online_ms,
+    SUM(offqueue_ms) AS offqueue_ms,
+    SUM(busy_ms) AS busy_ms,
+    SUM(meeting_ms) AS meeting_ms,
+    SUM(break_ms) AS break_ms,
+    SUM(login_ms) AS login_ms,
+    SUM(other_ms) AS other_ms
+  FROM user_day
+  GROUP BY day
+),
+
+day_work AS (
+  SELECT
+    day,
+    COUNTIF(talkMs > 0) AS handled,
+    COUNTIF(talkMs > 0 AND isVoice) AS calls,
+    SUM(IF(talkMs > 0, talkMs, 0)) AS talk_ms
+  FROM workitems
+  GROUP BY day
+),
+
+day_all AS (
+  SELECT
+    COALESCE(t.day, w.day) AS day,
+    IFNULL(t.active_agents, 0) AS active_agents,
+    IFNULL(w.handled, 0) AS handled,
+    IFNULL(w.calls, 0) AS calls,
+    IFNULL(w.talk_ms, 0) AS talk_ms,
+    IFNULL(t.gross_ms, 0) AS gross_ms,
+    IFNULL(t.online_ms, 0) AS online_ms,
+    IFNULL(t.offqueue_ms, 0) AS offqueue_ms,
+    IFNULL(t.busy_ms, 0) AS busy_ms,
+    IFNULL(t.meeting_ms, 0) AS meeting_ms,
+    IFNULL(t.break_ms, 0) AS break_ms,
+    IFNULL(t.login_ms, 0) AS login_ms,
+    IFNULL(t.other_ms, 0) AS other_ms
+  FROM day_time AS t
+  FULL OUTER JOIN day_work AS w
+    ON t.day = w.day
+),
+
+program_time AS (
+  SELECT
+    u.day,
+    COALESCE(p.program, '(no program)') AS program,
+    COUNTIF(u.online_ms > 0) AS agents,
+    SUM(u.gross_ms) AS gross_ms,
+    SUM(u.online_ms) AS online_ms,
+    SUM(u.offqueue_ms) AS offqueue_ms,
+    SUM(u.busy_ms) AS busy_ms,
+    SUM(u.meeting_ms) AS meeting_ms,
+    SUM(u.break_ms) AS break_ms,
+    SUM(u.login_ms) AS login_ms,
+    SUM(u.other_ms) AS other_ms
+  FROM user_day AS u
+  LEFT JOIN agent_program AS p
+    ON p.userName = u.userName
+  GROUP BY day, program
+),
+
+program_work AS (
+  SELECT
+    day,
+    program,
+    COUNTIF(talkMs > 0) AS handled,
+    COUNTIF(talkMs > 0 AND isVoice) AS calls,
+    SUM(IF(talkMs > 0, talkMs, 0)) AS talk_ms
+  FROM workitems
+  GROUP BY day, program
+),
+
+program_all AS (
+  SELECT
+    COALESCE(t.day, w.day) AS day,
+    COALESCE(t.program, w.program) AS program,
+    IFNULL(t.agents, 0) AS agents,
+    IFNULL(w.handled, 0) AS handled,
+    IFNULL(w.calls, 0) AS calls,
+    IFNULL(w.talk_ms, 0) AS talk_ms,
+    IFNULL(t.gross_ms, 0) AS gross_ms,
+    IFNULL(t.online_ms, 0) AS online_ms,
+    IFNULL(t.offqueue_ms, 0) AS offqueue_ms,
+    IFNULL(t.busy_ms, 0) AS busy_ms,
+    IFNULL(t.meeting_ms, 0) AS meeting_ms,
+    IFNULL(t.break_ms, 0) AS break_ms,
+    IFNULL(t.login_ms, 0) AS login_ms,
+    IFNULL(t.other_ms, 0) AS other_ms
+  FROM program_time AS t
+  FULL OUTER JOIN program_work AS w
+    ON t.day = w.day
+   AND t.program = w.program
+)
+
+SELECT
+  TO_JSON_STRING(
+    STRUCT(
+      FORMAT_TIMESTAMP('%m/%d/%Y %H:%M', CURRENT_TIMESTAMP(), 'America/Phoenix') AS updated_at,
+      ARRAY(
+        SELECT AS STRUCT
+          FORMAT_DATE('%Y-%m-%d', day) AS day,
+          active_agents, handled, calls, talk_ms, gross_ms,
+          online_ms, offqueue_ms, busy_ms, meeting_ms, break_ms, login_ms, other_ms
+        FROM day_all
+        WHERE day IS NOT NULL
+        ORDER BY day DESC
+      ) AS day_rows,
+      ARRAY(
+        SELECT AS STRUCT
+          FORMAT_DATE('%Y-%m-%d', day) AS day,
+          program, agents, handled, calls, talk_ms, gross_ms,
+          online_ms, offqueue_ms, busy_ms, meeting_ms, break_ms, login_ms, other_ms
+        FROM program_all
+        WHERE day IS NOT NULL
+        ORDER BY day DESC, handled DESC
+      ) AS program_rows
+    )
+  ) AS pulse_json
