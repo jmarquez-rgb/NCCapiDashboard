@@ -1,7 +1,0 @@
-NCC dashboard rebuild package
-Build: Oct 14 - v4
-
-docs/index.html is 189373 bytes (about 185 KB).
-Open docs/index.html on your computer first. At the top of the page you should see a
-purple tag that says: Build Oct 14 - v4
-If you do not see that tag, you have an old copy. Do not upload it.
