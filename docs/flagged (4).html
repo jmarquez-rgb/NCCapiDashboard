@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QA Flagged Calls - NCC</title>
+<style>
+:root{--navy:#14213d;--teal:#0fa3a3;--coral:#e4572e;--amber:#f2a541;--green:#2e9e6b;--blue:#3b6fb6;--bg:#f4f7fa;--card:#fff;--line:#d9e0e8;--mut:#5a6270;--purple:#7a4fd6}
+*{box-sizing:border-box}
+body{margin:0;font-family:Calibri,Arial,sans-serif;background:var(--bg);color:var(--navy);font-size:15px}
+header{background:var(--navy);color:#fff;padding:14px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+header h1{margin:0;font-size:20px;font-weight:700}
+.tag{background:var(--purple);color:#fff;border-radius:12px;padding:2px 10px;font-size:12px;font-weight:700}
+main{max-width:1280px;margin:0 auto;padding:18px 24px 60px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:18px}
+h2{margin:0 0 10px;font-size:18px}
+.note{color:var(--mut);font-size:13px}
+textarea{width:100%;min-height:90px;border:1px solid var(--line);border-radius:8px;padding:8px;font-family:Consolas,monospace;font-size:12px}
+button,select,input[type=date],input[type=text]{font:inherit;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--navy)}
+button{cursor:pointer;background:var(--teal);color:#fff;border-color:var(--teal);font-weight:600}
+button.sec{background:#fff;color:var(--navy);border-color:var(--line)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
+.kpi .v{font-size:26px;font-weight:700}
+.kpi .l{font-size:13px;color:var(--mut)}
+.kpi.flag .v{color:var(--coral)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:18px}
+.bar{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:13px}
+.bar .n{width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .t{flex:1;background:#eaeff4;border-radius:6px;height:16px;overflow:hidden}
+.bar .f{height:100%;background:var(--teal)}
+.bar .c{width:70px;text-align:right;color:var(--mut)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{background:var(--navy);color:#fff;text-align:left;padding:8px;position:sticky;top:0}
+td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+tr.call{cursor:pointer}
+tr.call:hover td{background:#f0f6fa}
+.chip{display:inline-block;border-radius:10px;padding:1px 8px;margin:1px 3px 1px 0;font-size:12px;font-weight:600;color:#fff}
+.sev-high{background:var(--coral)}.sev-medium{background:var(--amber);color:var(--navy)}.sev-low{background:var(--blue)}
+.grade{font-weight:700;border-radius:6px;padding:1px 7px;color:#fff}
+.g-A,.g-B{background:var(--green)}.g-C{background:var(--amber);color:var(--navy)}.g-D,.g-F{background:var(--coral)}
+.detail td{background:#f8fafc}
+.detail h4{margin:8px 0 3px;font-size:14px;color:var(--teal)}
+.detail ul{margin:3px 0 3px 18px;padding:0}
+.empty{padding:26px;text-align:center;color:var(--mut)}
+.scroll{max-height:520px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.warn{background:#fff4d6;border:1px solid #e8d49a;border-radius:8px;padding:8px 12px;font-size:13px;margin-top:8px}
+</style>
+</head>
+<body>
+<header>
+  <h1>QA Flagged Calls</h1>
+  <span class="tag">Flags v2 - Oct 28</span>
+  <span class="note" style="color:#c9d4e3">Post-call flags from the AI QA prompt. Nothing here is live.</span>
+</header>
+<main>
+  <div class="card" id="loadCard">
+    <h2>1. Load data</h2>
+    <div class="note">Run <b>ai_flags.sql</b> in BigQuery. Copy the one cell called <b>payload</b>. Paste it below. You can also load a saved .json file.</div>
+    <textarea id="paste" placeholder="Paste the payload here"></textarea>
+    <div class="row">
+      <button id="loadBtn">Load</button>
+      <input type="file" id="file" accept=".json,.txt">
+      <button class="sec" id="clearBtn">Clear</button>
+      <span id="status" class="note"></span>
+    </div>
+  </div>
+
+  <div id="app">
+    <div class="kpis" id="kpis"></div>
+
+    <div class="card" style="margin-top:18px">
+      <h2>Flagged Calls</h2>
+      <div class="note" id="flagSub"></div>
+      <div class="row">
+        <label>Agent <select id="fAgent"></select></label>
+        <label>Flag <select id="fCat"></select></label>
+        <label>Severity <select id="fSev"><option value="">All</option><option>high</option><option>medium</option><option>low</option></select></label>
+        <label>From <input type="date" id="fFrom"></label>
+        <label>To <input type="date" id="fTo"></label>
+        <button class="sec" id="resetF">Reset</button>
+        <button class="sec" id="copyList">Copy daily list</button>
+        <button class="sec" id="csvBtn">Download CSV</button>
+      </div>
+      <div class="scroll" style="margin-top:10px"><table id="flagTable"></table></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card"><h2>Flags by category</h2><div id="chCat"></div></div>
+      <div class="card"><h2>Flag rate by agent</h2><div id="chAgent"></div></div>
+      <div class="card"><h2>Grade mix</h2><div id="chGrade"></div></div>
+      <div class="card"><h2>Caller sentiment</h2><div id="chSent"></div></div>
+    </div>
+
+    <div class="card">
+      <h2>All scored calls</h2>
+      <div class="row"><input type="text" id="q" placeholder="Search agent or call ID"><span class="note" id="allCount"></span></div>
+      <div class="scroll" style="margin-top:10px"><table id="allTable"></table></div>
+    </div>
+  </div>
+</main>
+
+<script>
+(function(){
+'use strict';
+var calls=[];
+var $=function(id){return document.getElementById(id)};
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function num(x){var n=parseFloat(x);return isFinite(n)?n:null}
+function arr(x){
+  if(Array.isArray(x))return x;
+  if(typeof x==='string'){try{var p=JSON.parse(x);return Array.isArray(p)?p:[]}catch(e){return []}}
+  return [];
+}
+function obj(x){
+  if(x&&typeof x==='object'&&!Array.isArray(x))return x;
+  if(typeof x==='string'){try{var p=JSON.parse(x);return p&&typeof p==='object'?p:{}}catch(e){return {}}}
+  return {};
+}
+function parseInput(text){
+  text=String(text||'').replace(/^\uFEFF/,'').trim();
+  text=text.replace(/^```(?:json)?/i,'').replace(/```$/,'').trim();
+  if(!text)throw new Error('Nothing to load.');
+  var v=JSON.parse(text);
+  if(typeof v==='string')v=JSON.parse(v);
+  if(v&&!Array.isArray(v)){
+    if(v.calls)v=v.calls; else if(v.payload)v=typeof v.payload==='string'?JSON.parse(v.payload):v.payload; else v=[v];
+  }
+  if(Array.isArray(v)&&v.length&&v[0]&&v[0].payload&&!v[0].call_id){
+    var out=[];v.forEach(function(r){var p=typeof r.payload==='string'?JSON.parse(r.payload):r.payload;out=out.concat(Array.isArray(p)?p:[p])});v=out;
+  }
+  if(!Array.isArray(v))throw new Error('Could not find a list of calls.');
+  return v;
+}
+function norm(r){
+  var c={};
+  c.id=r.call_id||r.callId||r.id||'';
+  c.date=String(r.call_date||r.date||'').slice(0,10);
+  c.agent=r.agent||r.agentName||'Unknown';
+  c.score=num(r.weighted_score);
+  c.grade=(r.grade||'').toString().toUpperCase().slice(0,1);
+  c.flags=arr(r.flags).map(function(f){f=obj(f);return {category:f.category||'Other',severity:(f.severity||'low').toLowerCase(),evidence:f.evidence||'',time:f.approx_time||''}});
+  var hi=c.flags.filter(function(f){return f.severity==='high'}).length;
+  var me=c.flags.filter(function(f){return f.severity==='medium'}).length;
+  c.flagged=(typeof r.flagged==='boolean')?r.flagged:(r.flagged==='true'||(r.flagged==null&&(hi>0||me>=2)));
+  c.reason=r.flag_reason_summary||'';
+  c.coaching=arr(r.coaching);
+  c.phi=(r.phi_detected===true||r.phi_detected==='true');
+  c.summary=r.summary||'';
+  var s=obj(r.sentiment);
+  c.callerSent=(s.caller||r.aiContactSentiment||'').toString().toLowerCase();
+  c.agentSent=(s.agent||r.aiAgentSentiment||'').toString().toLowerCase();
+  c.trend=s.caller_trend||'';
+  var t=obj(r.talk_time);c.agentPct=num(t.agent_pct);c.callerPct=num(t.caller_pct);
+  var sc=obj(r.script);c.req=num(sc.lines_required);c.del=num(sc.lines_delivered);c.missed=arr(sc.missed_lines);
+  var o=obj(r.objections);c.objRaised=num(o.raised);c.objReb=num(o.rebutted);c.unhandled=arr(o.unhandled);
+  c.repeats=num(r.caller_repeat_requests);
+  c.pillars=arr(r.pillars).map(obj);
+  return c;
+}
+function pct(a,b){return b>0?Math.round(a/b*100)+'%':'-'}
+function avg(list){var v=list.filter(function(x){return x!=null});return v.length?v.reduce(function(a,b){return a+b},0)/v.length:null}
+function fmt(x,d){return x==null?'-':x.toFixed(d==null?0:d)}
+function bars(el,rows,color){
+  var max=Math.max.apply(null,rows.map(function(r){return r.v}).concat([1]));
+  el.innerHTML=rows.length?rows.map(function(r){
+    return '<div class="bar"><div class="n" title="'+esc(r.n)+'">'+esc(r.n)+'</div><div class="t"><div class="f" style="width:'+Math.round(r.v/max*100)+'%;background:'+(r.color||color||'var(--teal)')+'"></div></div><div class="c">'+esc(r.label||r.v)+'</div></div>';
+  }).join(''):'<div class="empty">No data</div>';
+}
+function chips(c){return c.flags.map(function(f){return '<span class="chip sev-'+esc(f.severity)+'">'+esc(f.category)+'</span>'}).join('')}
+function gradeEl(c){return c.grade?'<span class="grade g-'+esc(c.grade)+'">'+esc(c.grade)+'</span> ':''}
+function detail(c){
+  var h='<div class="detail"><h4>Why it was flagged</h4>'+(c.reason?'<div>'+esc(c.reason)+'</div>':'')+'<ul>'+c.flags.map(function(f){return '<li><b>'+esc(f.category)+'</b> ('+esc(f.severity)+(f.time?', '+esc(f.time):'')+'): '+esc(f.evidence)+'</li>'}).join('')+'</ul>';
+  if(c.missed.length)h+='<h4>Script lines missed</h4><ul>'+c.missed.map(function(m){return '<li>'+esc(m)+'</li>'}).join('')+'</ul>';
+  if(c.unhandled.length)h+='<h4>Objections not handled</h4><ul>'+c.unhandled.map(function(m){return '<li>'+esc(m)+'</li>'}).join('')+'</ul>';
+  if(c.coaching.length)h+='<h4>Coaching points</h4><ul>'+c.coaching.map(function(m){return '<li>'+esc(m)+'</li>'}).join('')+'</ul>';
+  if(c.summary)h+='<h4>Summary</h4><div>'+esc(c.summary)+'</div>';
+  h+='<div class="note" style="margin-top:6px">Call ID '+esc(c.id)+(c.phi?' - health information was detected on this call':'')+'</div></div>';
+  return h;
+}
+function toggleRow(tr,c,cols){
+  var nx=tr.nextSibling;
+  if(nx&&nx.classList&&nx.classList.contains('dr')){nx.parentNode.removeChild(nx);return}
+  var d=document.createElement('tr');d.className='dr detail';
+  var td=document.createElement('td');td.colSpan=cols;td.innerHTML=detail(c);d.appendChild(td);
+  tr.parentNode.insertBefore(d,tr.nextSibling);
+}
+function tableOf(el,list,cols,rowFn,heads){
+  el.innerHTML='';
+  var thead='<tr>'+heads.map(function(h){return '<th>'+h+'</th>'}).join('')+'</tr>';
+  var body=document.createElement('tbody');
+  if(!list.length){el.innerHTML=thead+'<tr><td colspan="'+heads.length+'" class="empty">No calls match.</td></tr>';return}
+  list.slice(0,300).forEach(function(c){
+    var tr=document.createElement('tr');tr.className='call';tr.innerHTML=rowFn(c);
+    tr.addEventListener('click',function(){toggleRow(tr,c,heads.length)});
+    body.appendChild(tr);
+  });
+  el.innerHTML=thead;el.appendChild(body);
+}
+function filtered(){
+  var a=$('fAgent').value,cat=$('fCat').value,sev=$('fSev').value,from=$('fFrom').value,to=$('fTo').value;
+  return calls.filter(function(c){
+    if(!c.flagged)return false;
+    if(a&&c.agent!==a)return false;
+    if(cat&&!c.flags.some(function(f){return f.category===cat}))return false;
+    if(sev&&!c.flags.some(function(f){return f.severity===sev}))return false;
+    if(from&&c.date&&c.date<from)return false;
+    if(to&&c.date&&c.date>to)return false;
+    return true;
+  }).sort(function(x,y){return (y.date||'').localeCompare(x.date||'')||((x.score==null?999:x.score)-(y.score==null?999:y.score))});
+}
+function renderFlags(){
+  var list=filtered();
+  tableOf($('flagTable'),list,5,function(c){
+    return '<td>'+esc(c.date)+'</td><td>'+esc(c.agent)+'</td><td>'+gradeEl(c)+fmt(c.score)+'</td><td>'+chips(c)+'</td><td>'+esc(c.reason||(c.flags[0]&&c.flags[0].evidence)||'')+'</td>';
+  },['Date','Agent','Score','Flags','Reason (click a row for detail)']);
+  var days=calls.map(function(c){return c.date}).filter(Boolean).sort();
+  var last=days.length?days[days.length-1]:'';
+  var recent=calls.filter(function(c){return c.flagged&&c.date&&last&&c.date>=prevDay(last)}).length;
+  if(!calls.length){$('flagSub').textContent='No data loaded yet. Paste your data in box 1 above and click Load.';return}
+  $('flagSub').textContent=list.length+' flagged calls shown. '+recent+' flagged on the latest two days in the data ('+(last?prevDay(last)+' to '+last:'no dates')+'). Dates are call dates, not exact times.';
+}
+function prevDay(d){var t=new Date(d+'T00:00:00Z');t.setUTCDate(t.getUTCDate()-1);return t.toISOString().slice(0,10)}
+function renderAll(){
+  var f=calls.filter(function(c){return c.flagged});
+  var scored=calls.filter(function(c){return c.score!=null});
+  var req=0,del=0,raised=0,reb=0,phi=0;
+  calls.forEach(function(c){if(c.req!=null&&c.del!=null){req+=c.req;del+=c.del}if(c.objRaised!=null){raised+=c.objRaised;reb+=c.objReb||0}if(c.phi)phi++});
+  var k=[
+    ['Calls loaded',calls.length,''],
+    ['Calls scored',scored.length+' ('+pct(scored.length,calls.length)+')',''],
+    ['Flagged calls',f.length,'flag'],
+    ['Flag rate',pct(f.length,calls.length),'flag'],
+    ['Average score',fmt(avg(scored.map(function(c){return c.score}))),''],
+    ['Script adherence',pct(del,req),''],
+    ['Objections rebutted',pct(reb,raised),''],
+    ['Caller repeat requests / call',fmt(avg(calls.map(function(c){return c.repeats})),1),''],
+    ['Agent talk share (est.)',(function(){var v=avg(calls.map(function(c){return c.agentPct}));return v==null?'-':Math.round(v)+'%'})(),''],
+    ['Caller talk share (est.)',(function(){var v=avg(calls.map(function(c){return c.callerPct}));return v==null?'-':Math.round(v)+'%'})(),''],
+    ['Calls with health info',phi,'']
+  ];
+  $('kpis').innerHTML=k.map(function(x){return '<div class="kpi '+x[2]+'"><div class="v">'+esc(x[1])+'</div><div class="l">'+esc(x[0])+'</div></div>'}).join('');
+  // filters
+  var agents=Array.from(new Set(calls.map(function(c){return c.agent}))).sort();
+  var cats=Array.from(new Set([].concat.apply([],calls.map(function(c){return c.flags.map(function(x){return x.category})})))).sort();
+  $('fAgent').innerHTML='<option value="">All</option>'+agents.map(function(a){return '<option>'+esc(a)+'</option>'}).join('');
+  $('fCat').innerHTML='<option value="">All</option>'+cats.map(function(a){return '<option>'+esc(a)+'</option>'}).join('');
+  // charts
+  var cc={};f.forEach(function(c){c.flags.forEach(function(x){cc[x.category]=(cc[x.category]||0)+1})});
+  bars($('chCat'),Object.keys(cc).map(function(n){return {n:n,v:cc[n]}}).sort(function(a,b){return b.v-a.v}),'var(--coral)');
+  var ag={};calls.forEach(function(c){var a=ag[c.agent]||(ag[c.agent]={t:0,f:0});a.t++;if(c.flagged)a.f++});
+  bars($('chAgent'),Object.keys(ag).map(function(n){return {n:n,v:ag[n].t?ag[n].f/ag[n].t*100:0,label:ag[n].f+'/'+ag[n].t+' ('+pct(ag[n].f,ag[n].t)+')'}}).sort(function(a,b){return b.v-a.v}).slice(0,15),'var(--amber)');
+  var gr={};calls.forEach(function(c){if(c.grade)gr[c.grade]=(gr[c.grade]||0)+1});
+  var gcol={A:'var(--green)',B:'var(--green)',C:'var(--amber)',D:'var(--coral)',F:'var(--coral)'};
+  bars($('chGrade'),['A','B','C','D','F'].filter(function(g){return gr[g]}).map(function(g){return {n:'Grade '+g,v:gr[g],color:gcol[g]}}));
+  var se={};calls.forEach(function(c){if(c.callerSent)se[c.callerSent]=(se[c.callerSent]||0)+1});
+  var scol={positive:'var(--green)',neutral:'var(--blue)',negative:'var(--coral)'};
+  bars($('chSent'),Object.keys(se).map(function(n){return {n:n,v:se[n],color:scol[n]}}));
+  renderFlags();renderAllTable();
+}
+function renderAllTable(){
+  var q=$('q').value.toLowerCase();
+  var list=calls.filter(function(c){return !q||c.agent.toLowerCase().indexOf(q)>-1||String(c.id).toLowerCase().indexOf(q)>-1}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')});
+  $('allCount').textContent=list.length+' calls'+(list.length>300?' (showing 300)':'');
+  tableOf($('allTable'),list,6,function(c){
+    return '<td>'+esc(c.date)+'</td><td>'+esc(c.agent)+'</td><td>'+gradeEl(c)+fmt(c.score)+'</td><td>'+(c.flagged?chips(c):'<span class="note">none</span>')+'</td><td>'+esc(c.callerSent||'-')+'</td><td>'+(c.req!=null?c.del+'/'+c.req:'-')+'</td>';
+  },['Date','Agent','Score','Flags','Caller sentiment','Script lines']);
+}
+function load(text){
+  try{
+    var raw=parseInput(text);
+    calls=raw.map(norm);
+    $('status').textContent='Loaded '+calls.length+' calls.';
+    renderAll();
+  }catch(e){$('status').textContent='Could not read that: '+e.message;}
+}
+$('loadBtn').addEventListener('click',function(){load($('paste').value)});
+$('clearBtn').addEventListener('click',function(){$('paste').value='';calls=[];$('status').textContent='';renderAll()});
+$('file').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(){$('paste').value=r.result;load(r.result)};r.readAsText(f)});
+['fAgent','fCat','fSev','fFrom','fTo'].forEach(function(id){$(id).addEventListener('change',renderFlags)});
+$('resetF').addEventListener('click',function(){['fAgent','fCat','fSev','fFrom','fTo'].forEach(function(id){$(id).value=''});renderFlags()});
+$('q').addEventListener('input',renderAllTable);
+$('copyList').addEventListener('click',function(){
+  var l=filtered();
+  var t='Flagged calls ('+l.length+')\n'+l.map(function(c){return c.date+' | '+c.agent+' | score '+fmt(c.score)+' | '+c.flags.map(function(f){return f.category+' ('+f.severity+')'}).join(', ')+' | '+(c.reason||'')+' | '+c.id}).join('\n');
+  (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){$('status').textContent='Daily list copied.'},function(){var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);$('status').textContent='Daily list copied.'});
+});
+$('csvBtn').addEventListener('click',function(){
+  var l=filtered();
+  function q(s){s=String(s==null?'':s);return '"'+s.replace(/"/g,'""')+'"'}
+  var rows=[['call_id','date','agent','score','grade','flags','reason','coaching']].concat(l.map(function(c){return [c.id,c.date,c.agent,c.score,c.grade,c.flags.map(function(f){return f.category+' ('+f.severity+')'}).join('; '),c.reason,c.coaching.join(' | ')]}));
+  var blob=new Blob([rows.map(function(r){return r.map(q).join(',')}).join('\n')],{type:'text/csv'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='flagged_calls.csv';document.body.appendChild(a);a.click();document.body.removeChild(a);
+});
+renderAll();
+window.__loadFlags=load;
+})();
+</script>
+</body>
+</html>
